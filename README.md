@@ -28,8 +28,8 @@ Key highlights:
 
 Our year-round roadmap is packed with interactive sessions, workshops, and flagship tech events:
 
-1. **Orientation Session** — Introduction to AWS SBG SKIT, cloud fundamentals, and community roadmap.
-2. **Meet and Greet Session** — Meet core team members, learn about the club, and connect with fellow student builders.
+1. **Orientation Session** — Introduction to AWS SBG SKIT, cloud fundamentals, and community roadmap (22nd July).
+2. **Meet and Greet Session** — Meet core team members, learn about the club, and connect with fellow student builders (16th Sept).
 3. **Getting Started with AWS & Acing the Cloud Practitioner Certification** — Foundational cloud architecture deep-dive and exam strategies (27th Sept).
 4. **AWS Cloud Quest** — Interactive 3D RPG cloud learning arena (13th Oct).
 5. **Workshop: Introduction to AWS and its Services** — Hands-on workshop exploring core AWS infrastructure and services (23rd Oct).
