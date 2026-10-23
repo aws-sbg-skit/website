@@ -1163,6 +1163,19 @@
   .review-card { padding: 2rem; display: flex; flex-direction: column; justify-content: space-between; }
   .review-card p { color: var(--text); margin-bottom: 1rem; font-style: italic; }
   .review-card .reviewer { color: var(--text-dim); font-size: 0.9rem; font-family: var(--mono); text-align: right; }
+  .reviews-bottom-cta {
+    margin-top: 42px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .reviews-bottom-cta p {
+    color: var(--text-dim);
+    font-size: 14.5px;
+    margin: 0;
+  }
   @media (max-width: 980px) { .reviews-grid { grid-template-columns:repeat(2,1fr); } }
   @media (max-width: 620px) { .reviews-grid { grid-template-columns:1fr; } }
 
@@ -1496,168 +1509,677 @@
   }
 }
 
-/* ================= BUILDERS SPOTLIGHT ================= */
+/* ================= BUILDERS SPOTLIGHT (HALL OF FAME BENTO) ================= */
 .spotlight-section {
   padding: 110px clamp(20px, 5vw, 64px);
   max-width: 1300px;
   margin: 0 auto;
-}
-.spotlight-carousel-wrap {
   position: relative;
-  width: 100%;
-  overflow: hidden;
-  padding: 10px 0 30px;
-}
-.spotlight-track {
-  display: flex;
-  gap: 24px;
-  width: 100%;
-  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
-  will-change: transform;
 }
 
-.spotlight-card {
-  flex-shrink: 0;
-  box-sizing: border-box;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 18px;
-  transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+.hof-container {
   position: relative;
+  width: 100%;
+  margin-top: 14px;
+}
+
+/* Floating tech sparks & embers in background */
+.hof-sparks {
+  position: absolute;
+  inset: -40px -20px;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.hof-sparks .spark {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(1px);
+  opacity: 0.7;
+  animation: floatSpark 6s ease-in-out infinite alternate;
+}
+
+.hof-sparks .s1 { width: 4px; height: 4px; background: #f59e0b; top: 15%; left: 8%; box-shadow: 0 0 10px #f59e0b; animation-duration: 5s; }
+.hof-sparks .s2 { width: 5px; height: 5px; background: #29b6d8; top: 25%; right: 12%; box-shadow: 0 0 12px #29b6d8; animation-duration: 7s; }
+.hof-sparks .s3 { width: 3px; height: 3px; background: #ffd700; top: 75%; left: 18%; box-shadow: 0 0 8px #ffd700; animation-duration: 6.5s; }
+.hof-sparks .s4 { width: 4px; height: 4px; background: #ff9900; top: 60%; right: 28%; box-shadow: 0 0 10px #ff9900; animation-duration: 4.8s; }
+.hof-sparks .s5 { width: 3px; height: 3px; background: #38bdf8; top: 85%; right: 6%; box-shadow: 0 0 8px #38bdf8; animation-duration: 8s; }
+.hof-sparks .s6 { width: 5px; height: 5px; background: #e5a832; top: 40%; left: 45%; box-shadow: 0 0 12px #e5a832; animation-duration: 5.5s; }
+
+@keyframes floatSpark {
+  0% { transform: translateY(0) scale(0.9); opacity: 0.4; }
+  50% { transform: translateY(-16px) scale(1.2); opacity: 0.9; }
+  100% { transform: translateY(-30px) scale(0.8); opacity: 0.3; }
+}
+
+/* Bento Grid */
+.hof-bento-grid {
+  display: grid;
+  grid-template-columns: 1.32fr 1fr 1.68fr;
+  gap: 20px;
+  position: relative;
+  z-index: 2;
+  align-items: stretch;
+}
+
+.hof-col {
   display: flex;
   flex-direction: column;
+  gap: 18px;
 }
-.spotlight-card:hover {
-  transform: translateY(-8px);
-  border-color: var(--border-bright);
-  box-shadow: 0 20px 45px -12px rgba(255, 153, 0, 0.3), 0 0 25px rgba(41, 182, 216, 0.15);
+
+.hof-col-group {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
-.spotlight-img-frame {
+
+.hof-top-row {
+  display: grid;
+  grid-template-columns: 135px 1fr;
+  gap: 18px;
+}
+
+/* Common Card Base */
+.hof-card {
+  position: relative;
+  box-sizing: border-box;
+  background: rgba(13, 20, 32, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s ease, box-shadow 0.35s ease;
+  overflow: visible;
+}
+
+.hof-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(255, 153, 0, 0.5);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 24px rgba(255, 153, 0, 0.2);
+}
+
+/* 1. Featured Champion Card */
+.hof-featured {
+  background: radial-gradient(ellipse at 50% 12%, rgba(229, 168, 50, 0.12), rgba(11, 16, 26, 0.96));
+  border: 1.5px solid #d4941e;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 0 25px rgba(212, 148, 30, 0.15), inset 0 0 20px rgba(212, 148, 30, 0.05);
+}
+
+.hof-featured:hover {
+  border-color: #ffd700;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.8), 0 0 35px rgba(255, 215, 0, 0.3);
+}
+
+.hof-cyber-frame {
   position: relative;
   width: 100%;
-  height: 280px;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1.5px solid rgba(255, 153, 0, 0.35);
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.7), 0 8px 25px rgba(0, 0, 0, 0.4);
-  background: radial-gradient(circle at center, #101a26 0%, #050a10 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 100%;
 }
-.spotlight-img-frame::before {
-  content: '';
+
+.hof-corner {
   position: absolute;
-  inset: -1px;
-  border-radius: 14px;
-  padding: 1.5px;
-  background: linear-gradient(135deg, var(--orange), var(--blue), var(--orange-light));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+  width: 12px;
+  height: 12px;
   pointer-events: none;
-  z-index: 2;
+  z-index: 5;
 }
-.spotlight-img-frame img {
+.hof-corner.tl { top: -8px; left: -8px; border-top: 2.5px solid #ffd700; border-left: 2.5px solid #ffd700; }
+.hof-corner.tr { top: -8px; right: -8px; border-top: 2.5px solid #ffd700; border-right: 2.5px solid #ffd700; }
+.hof-corner.bl { bottom: -8px; left: -8px; border-bottom: 2.5px solid #ffd700; border-left: 2.5px solid #ffd700; }
+.hof-corner.br { bottom: -8px; right: -8px; border-bottom: 2.5px solid #ffd700; border-right: 2.5px solid #ffd700; }
+
+.hof-img-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #080d14;
+}
+
+.hof-featured .hof-img-wrap {
+  height: 245px;
+}
+
+.hof-img-wrap img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: center;
+  object-fit: cover;
+  object-position: center 20%;
   display: block;
-  transition: transform 0.5s ease;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.spotlight-card:hover .spotlight-img-frame img {
-  transform: scale(1.06);
+
+.hof-card:hover .hof-img-wrap img {
+  transform: scale(1.05);
 }
-.spotlight-badge {
+
+/* Trophy Badge */
+.hof-trophy-badge {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: linear-gradient(135deg, rgba(255, 153, 0, 0.95), rgba(255, 201, 77, 0.95));
-  color: #121820;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 999px;
-  z-index: 3;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-.spotlight-card-body {
-  padding: 16px 4px 4px;
+  z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-.spotlight-title {
-  font-family: var(--display);
-  font-size: 16.5px;
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1.35;
-}
-.spotlight-desc {
-  font-size: 13.5px;
-  color: var(--text-dim);
-  line-height: 1.5;
+  align-items: center;
 }
 
-/* Controls & Indicators */
-.spotlight-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 24px;
-  padding: 0 4px;
-}
-.spotlight-nav-btns {
-  display: flex;
-  gap: 10px;
-}
-.spotlight-nav-btn {
-  width: 42px;
-  height: 42px;
+.hof-trophy-circle {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--bg-panel);
-  color: var(--text-dim);
+  background: radial-gradient(circle, #2d200b 0%, #101622 100%);
+  border: 1.5px solid #ffd700;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  font-size: 18px;
-  transition: all 0.25s ease;
-  outline: none;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.45);
 }
-.spotlight-nav-btn:hover {
-  border-color: var(--orange);
-  color: var(--orange-light);
-  background: rgba(255, 153, 0, 0.1);
-  transform: translateY(-2px);
-}
-.spotlight-dots {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.spotlight-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--border-bright);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  opacity: 0.4;
-}
-.spotlight-dot.active {
-  width: 28px;
+
+.hof-trophy-pill {
+  margin-top: -6px;
+  background: #090e17;
+  border: 1.2px solid #ffd700;
+  color: #ffd700;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 2px 7px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--orange), var(--orange-light));
-  opacity: 1;
-  box-shadow: 0 0 10px rgba(255, 153, 0, 0.5);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Star Cluster */
+.hof-star-cluster {
+  position: absolute;
+  bottom: -10px;
+  right: 10px;
+  z-index: 10;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
+}
+
+/* Card Info */
+.hof-card-info {
+  padding: 14px 4px 4px;
+}
+
+.hof-card-title {
+  font-family: var(--display);
+  font-size: 17.5px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.3;
+  margin: 0 0 5px 0;
+}
+
+.hof-card-desc {
+  font-family: var(--font);
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* 2. Bottom Left Banner Card */
+.hof-bottom-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  height: 98px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hof-banner-thumb {
+  position: relative;
+  width: 110px;
+  height: 74px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #080d14;
+}
+
+.hof-banner-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.hof-bottom-banner:hover .hof-banner-thumb img {
+  transform: scale(1.08);
+}
+
+.hof-banner-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.hof-banner-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.hof-banner-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hof-stat-trophy {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.hof-banner-text {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hof-banner-text strong {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.hof-banner-text span {
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+/* Pill Badges */
+.hof-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.hof-tag.gold-pill {
+  background: #f59e0b;
+  color: #0b111a;
+}
+
+.hof-tag.amber-pill {
+  background: #f59e0b;
+  color: #0b111a;
+}
+
+.hof-tag.orange-pill {
+  background: #ff9900;
+  color: #0b111a;
+}
+
+.hof-tag.cyan-pill {
+  background: rgba(41, 182, 216, 0.16);
+  border: 1px solid rgba(41, 182, 216, 0.6);
+  color: #38bdf8;
+  padding: 2px 8px;
+}
+
+.hof-tag.top-right {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+}
+
+.hof-tag.top-center {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.hof-tag.bottom-right {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.hof-tag.bottom-center {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* 3. Center Top Card (Giveaway 1) */
+.hof-card-medium {
+  border: 1px solid rgba(41, 182, 216, 0.35);
+  padding: 12px;
+  position: relative;
+  border-radius: 16px;
+  background: rgba(13, 20, 32, 0.85);
+  overflow: visible;
+}
+
+.hof-card-medium:hover {
+  border-color: rgba(41, 182, 216, 0.8);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 24px rgba(41, 182, 216, 0.25);
+}
+
+.hof-top-notch-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.hof-badge-winner {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #090e17;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.45), 0 2px 6px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 235, 150, 0.35);
+  white-space: nowrap;
+}
+
+.hof-card-medium .medium-wrap {
+  height: 200px;
+}
+
+/* 4. Center Bottom Card (Giveaway Group) */
+.hof-card-bottom-group {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: visible;
+  height: 185px;
+  position: relative;
+}
+
+.hof-card-bottom-group .group-wrap {
+  height: 100%;
+}
+
+/* 5. Column 3 Mini Stack */
+.hof-mini-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 310px;
+}
+
+.hof-mini-card {
+  position: relative;
+  flex: 1;
+  border-radius: 12px;
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(13, 20, 32, 0.85);
+  box-sizing: border-box;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.hof-mini-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 153, 0, 0.5);
+}
+
+.hof-mini-img-wrap {
+  width: 100%;
+  height: 100%;
+  border-radius: 11px;
+  overflow: hidden;
+  position: relative;
+  background: #080d14;
+}
+
+.hof-mini-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.hof-mini-card:hover .hof-mini-img-wrap img {
+  transform: scale(1.08);
+}
+
+.hof-cyber-mini {
+  border: 1.5px solid #e5a832;
+  box-shadow: 0 0 15px rgba(229, 168, 50, 0.2);
+}
+
+.hof-cyber-mini:hover {
+  border-color: #ffd700;
+  box-shadow: 0 0 22px rgba(255, 215, 0, 0.35);
+}
+
+/* 6. Column 4 Giveaway 2 Card */
+.hof-card-giveaway2 {
+  position: relative;
+  height: 310px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.hof-card-giveaway2 .g2-wrap {
+  height: 200px;
+  position: relative;
+}
+
+/* 7. Bottom Row: 3 Stat Blocks (5+ events, 3+ quizes, 7+ giveaways) */
+.hof-bottom-stats-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hof-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.hof-stat-card {
+  position: relative;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  overflow: hidden;
+}
+
+.hof-stat-card:hover {
+  transform: translateY(-4px);
+}
+
+.hof-stat-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.hof-stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.hof-stat-num {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.hof-stat-lbl {
+  font-family: var(--display);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+/* Card 1: 5+ Events */
+.card-events {
+  background: rgba(14, 20, 32, 0.9);
+  border: 1px solid rgba(255, 180, 0, 0.35);
+}
+
+.card-events:hover {
+  border-color: rgba(255, 180, 0, 0.7);
+  box-shadow: 0 10px 25px -8px rgba(255, 180, 0, 0.3);
+}
+
+.hof-stat-num.gold {
+  color: #ffd700;
+}
+
+.card-events .hof-stat-lbl {
+  color: #cbd5e1;
+}
+
+/* Card 2: 3+ Quizes */
+.card-quizes {
+  background: linear-gradient(135deg, rgba(14, 42, 75, 0.95), rgba(20, 65, 115, 0.85));
+  border: 1px solid rgba(41, 182, 216, 0.6);
+  box-shadow: 0 0 20px rgba(41, 182, 216, 0.2);
+}
+
+.card-quizes:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 10px 25px -8px rgba(41, 182, 216, 0.4), 0 0 25px rgba(41, 182, 216, 0.3);
+}
+
+.hof-stat-num.cyan {
+  color: #38bdf8;
+}
+
+.card-quizes .hof-stat-lbl {
+  color: #e0f2fe;
+}
+
+/* Card 3: 7+ Giveaways */
+.card-giveaways {
+  background: linear-gradient(135deg, rgba(46, 36, 12, 0.95), rgba(30, 24, 10, 0.85));
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.15);
+}
+
+.card-giveaways:hover {
+  border-color: #fbbf24;
+  box-shadow: 0 10px 25px -8px rgba(245, 158, 11, 0.35), 0 0 25px rgba(245, 158, 11, 0.25);
+}
+
+.hof-stat-num.amber {
+  color: #fbbf24;
+}
+
+.card-giveaways .hof-stat-lbl {
+  color: #fef3c7;
+}
+
+.hof-stat-subbadge {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  color: rgba(251, 191, 36, 0.4);
+}
+
+/* View All Champions Link */
+.hof-view-all-wrap {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 4px 0 0;
+}
+
+.hof-view-all-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--display);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+  transition: all 0.25s ease;
+}
+
+.hof-view-all-link svg {
+  transition: transform 0.25s ease;
+}
+
+.hof-view-all-link:hover {
+  color: var(--orange-light);
+}
+
+.hof-view-all-link:hover svg {
+  transform: translateX(4px);
+}
+
+/* Responsive Media Queries */
+@media (max-width: 1100px) {
+  .hof-bento-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .hof-col-group {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .hof-bento-grid {
+    grid-template-columns: 1fr;
+  }
+  .hof-col-group {
+    grid-column: span 1;
+  }
+  .hof-top-row {
+    grid-template-columns: 1fr;
+  }
+  .hof-mini-stack {
+    flex-direction: row;
+    height: 160px;
+  }
+  .hof-stats-row {
+    grid-template-columns: 1fr;
+  }
+  .hof-featured .hof-img-wrap {
+    height: 200px;
+  }
 }
 
 

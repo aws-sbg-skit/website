@@ -34,5 +34,17 @@
     "image": "assets/spotlight/winner-6.jpg",
     "title": "Winners of AWS Cloud Sprint",
     "description": "Celebrating the outstanding champions and winners of the AWS Cloud Sprint challenge!"
+  },
+  {
+    "id": "cloud-quest-winner-1",
+    "image": "assets/spotlight/cloud-quest-winner-1.jpg",
+    "title": "AWS Cloud Quest Winner",
+    "description": "AWS Cloud Quest Challenge Winner receiving official AWS community merchandise kit."
+  },
+  {
+    "id": "cloud-quest-winner-2",
+    "image": "assets/spotlight/cloud-quest-winner-2.jpg",
+    "title": "AWS Cloud Quest Winner",
+    "description": "AWS Cloud Quest Challenge Winner receiving official AWS community swag kit."
   }
 ]

@@ -338,7 +338,7 @@
 
   const knowledgeBase = [
     { keys: ['event', 'workshop', 'hackathon', 'schedule', 'session'], reply: "Our schedule is stacked with hands-on workshops, tabling events, Community Day, and the AWSsome Hackathon! Check out the full timeline in the Events section 👇" },
-    { keys: ['builder', 'center', 'portal', 'voucher'], reply: "AWS Builder Center is the official student portal where you register your builder profile, access free cloud credits, and earn AWS certification vouchers! Head to the Builder Center section or <a href=\"https://bit.ly/3S4nIze\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--orange-light);text-decoration:underline;\">JOIN HERE 🚀</a>" },
+    { keys: ['builder', 'center', 'portal', 'voucher'], reply: "AWS Builder Center is the official student portal where you register your builder profile, access free cloud credits, and earn AWS certification vouchers! Head to the Builder Center section or <a href=\"https://builder.aws.com?inviteId=e47acd8d-bc16-4cc0-8b0c-5c9afae9636c\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--orange-light);text-decoration:underline;\">JOIN HERE 🚀</a>" },
     { keys: ['team', 'lead', 'who', 'runs', 'founder'], reply: "We're run by 6 students — Shlok (Club Lead), Virendra (Technical Lead), Tushar (Events), Naman (Community), Vansh (PR) and Soumya (Social/Marketing). Full squad is in the Team section." },
     { keys: ['join', 'member', 'sign', 'up', 'register'], reply: "Easiest way in: hit the WhatsApp group in the Join section, or tap the 'Join the crew' button up top. Zero forms, zero fees." },
     { keys: ['social', 'instagram', 'linkedin', 'meetup', 'insta'], reply: "We're on LinkedIn, Instagram and Meetup — links are in the Join section footer." },

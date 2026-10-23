@@ -1,7 +1,6 @@
 # ☁️ AWS Student Builder Group SKIT
 
 🌐 **Live Website**: [https://aws-sbg-skit.vercel.app/](https://aws-sbg-skit.vercel.app/)  
-🐙 **GitHub Organization**: [https://github.com/aws-sbg-skit/](https://github.com/aws-sbg-skit/)
 
 Official student-run cloud community at Swami Keshvanand Institute of Technology (SKIT), Jaipur.
 
@@ -32,12 +31,13 @@ Our year-round roadmap is packed with interactive sessions, workshops, and flags
 2. **Meet and Greet Session** — Meet core team members, learn about the club, and connect with fellow student builders (16th Sept).
 3. **Getting Started with AWS & Acing the Cloud Practitioner Certification** — Foundational cloud architecture deep-dive and exam strategies (27th Sept).
 4. **AWS Cloud Quest** — Interactive 3D RPG cloud learning arena (13th Oct).
-5. **Workshop: Introduction to AWS and its Services** — Hands-on workshop exploring core AWS infrastructure and services (23rd Oct).
-6. **Build with Kiro** — Developer tool deep-dive and AI-assisted cloud development.
-7. **Career & Networking Session** — Mentorship with AWS Cloud Captains and industry professionals.
-8. **AWS Services Workshops** — Intensive practical sessions covering compute, storage, databases, and security.
-9. **AWS Student Community Day** — Flagship gathering featuring keynote speakers, live demos, and networking.
-10. **AWSsome Hackathon** — 24-hour cloud hackathon to build and deploy scalable solutions for real-world challenges.
+5. **AWS 101** — Hands-on workshop exploring core AWS infrastructure and services (26th Oct).
+6. **AWS re:Invent Watch Party** — Live keynote watch party and discussion on breakthrough cloud announcements (1st Dec 2026).
+7. **Build with Kiro** — Developer tool deep-dive and AI-assisted cloud development.
+8. **Career & Networking Session** — Mentorship with AWS Cloud Captains and industry professionals.
+9. **AWS Services Workshops** — Intensive practical sessions covering compute, storage, databases, and security.
+10. **AWS Student Community Day** — Flagship gathering featuring keynote speakers, live demos, and networking.
+11. **AWSsome Hackathon** — 24-hour cloud hackathon to build and deploy scalable solutions for real-world challenges.
 
 ---
 
