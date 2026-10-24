@@ -482,6 +482,15 @@
   }
   .tl-item{ position:relative; padding-left:66px; margin-bottom:44px; transition: all 0.4s ease; }
   .tl-item:last-child{ margin-bottom:0; }
+  .tl-item.reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .tl-item.reveal.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
   .tl-dot{
     position:absolute; left:14px; top:30px; width:22px; height:22px; border-radius:50%;
     background:var(--bg-panel); border:2px solid var(--orange); display:flex; align-items:center; justify-content:center;
@@ -588,7 +597,7 @@
     transform: translateY(-2px);
   }
 
-  /* Mobile Event Cards Alignment */
+  /* Mobile Event Cards Alignment & Scroll Visibility */
   @media (max-width: 768px) {
     .event-card {
       grid-template-columns: 1fr;
@@ -596,6 +605,14 @@
     }
     .event-tag {
       justify-self: start;
+    }
+    /* Ensure all timeline events are immediately visible on mobile while scrolling */
+    .timeline .tl-item,
+    .timeline .tl-item.reveal,
+    .timeline.reveal-stagger > * {
+      opacity: 1 !important;
+      transform: none !important;
+      visibility: visible !important;
     }
   }
 

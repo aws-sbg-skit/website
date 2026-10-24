@@ -534,8 +534,18 @@
         io.unobserve(entry.target);
       }
     });
-  }, { threshold:0.15 });
+  }, { 
+    threshold: [0, 0.05],
+    rootMargin: '0px 0px 50px 0px'
+  });
   revealEls.forEach(el => io.observe(el));
+
+  // Mobile safety: make sure timeline items are revealed immediately on mobile
+  if (isTouchDevice || window.innerWidth <= 768) {
+    document.querySelectorAll('.timeline .tl-item, .timeline').forEach(el => {
+      el.classList.add('in');
+    });
+  }
 
   // ---------- counter animation ----------
   const statNums = document.querySelectorAll('.stat-num');
@@ -563,32 +573,33 @@
   }, { threshold:0.5 });
   statNums.forEach(el => statIo.observe(el));
 
-  // ---------- team card tilt ----------
-  document.querySelectorAll('.team-card').forEach(card => {
-    let r = null;
-    card.addEventListener('mouseenter', () => { r = card.getBoundingClientRect(); });
-    card.addEventListener('mousemove', (e) => {
-      if(!r) r = card.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5;
-      const y = (e.clientY - r.top) / r.height - 0.5;
-      card.style.transform = `perspective(600px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateY(-4px)`;
+  // ---------- team & event card tilt (desktop only) ----------
+  if (!isTouchDevice) {
+    document.querySelectorAll('.team-card').forEach(card => {
+      let r = null;
+      card.addEventListener('mouseenter', () => { r = card.getBoundingClientRect(); });
+      card.addEventListener('mousemove', (e) => {
+        if(!r) r = card.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        card.style.transform = `perspective(600px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateY(-4px)`;
+      });
+      card.addEventListener('mouseleave', () => { r = null; card.style.transform = ''; });
     });
-    card.addEventListener('mouseleave', () => { r = null; card.style.transform = ''; });
-  });
 
-  // ---------- event card tilt ----------
-  document.querySelectorAll('.event-card').forEach(card => {
-    if (card.classList.contains('placeholder')) return;
-    let r = null;
-    card.addEventListener('mouseenter', () => { r = card.getBoundingClientRect(); });
-    card.addEventListener('mousemove', (e) => {
-      if(!r) r = card.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5;
-      const y = (e.clientY - r.top) / r.height - 0.5;
-      card.style.transform = `perspective(800px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg) translateY(-5px) scale(1.01)`;
+    document.querySelectorAll('.event-card').forEach(card => {
+      if (card.classList.contains('placeholder')) return;
+      let r = null;
+      card.addEventListener('mouseenter', () => { r = card.getBoundingClientRect(); });
+      card.addEventListener('mousemove', (e) => {
+        if(!r) r = card.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        card.style.transform = `perspective(800px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg) translateY(-5px) scale(1.01)`;
+      });
+      card.addEventListener('mouseleave', () => { r = null; card.style.transform = ''; });
     });
-    card.addEventListener('mouseleave', () => { r = null; card.style.transform = ''; });
-  });
+  }
 
   // ---------- terminal window controls ----------
   const terminalWrap = document.getElementById('terminalWrap');
