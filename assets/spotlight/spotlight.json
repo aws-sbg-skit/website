@@ -46,5 +46,11 @@
     "image": "assets/spotlight/cloud-quest-winner-2.jpg",
     "title": "AWS Cloud Quest Winner",
     "description": "AWS Cloud Quest Challenge Winner receiving official AWS community swag kit."
+  },
+  {
+    "id": "aws-101-quiz-winner",
+    "image": "assets/spotlight/aws-101-quiz-winner.jpg",
+    "title": "Winner of Quiz in AWS 101 Session",
+    "description": "Winner of the technical quiz during the AWS 101 Hands-On Workshop session receiving official AWS prize."
   }
 ]

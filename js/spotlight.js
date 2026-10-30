@@ -178,9 +178,136 @@
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initHallOfFame);
-  } else {
+  function initPhotoLikes() {
+    const STORAGE_KEY = 'aws_sbg_photo_likes';
+    const defaultLikes = {
+      'winner-1': 42,
+      'cloud-quest': 58,
+      'winner-2': 35,
+      'winner-6': 47,
+      'winner-4': 28,
+      'winner-5': 31,
+      'winner-3': 39,
+      'cloud-quest-winner-1': 33,
+      'cloud-quest-winner-2': 36,
+      'aws-101-quiz-winner': 40
+    };
+
+    let store = { userLikes: [], counts: {} };
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          store.userLikes = Array.isArray(parsed.userLikes) ? parsed.userLikes : [];
+          store.counts = (parsed.counts && typeof parsed.counts === 'object') ? parsed.counts : {};
+        }
+      }
+    } catch (err) {
+      console.warn('LocalStorage error:', err);
+    }
+
+    // Populate missing default counts
+    Object.keys(defaultLikes).forEach(id => {
+      if (typeof store.counts[id] !== 'number') {
+        store.counts[id] = defaultLikes[id];
+      }
+    });
+
+    function saveStore() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      } catch (err) {
+        console.warn('LocalStorage save error:', err);
+      }
+    }
+
+    function getLabel(count) {
+      return count === 1 ? '1 like' : `${count} likes`;
+    }
+
+    function updateButtonUI(btn, id) {
+      const isLiked = store.userLikes.includes(id);
+      const count = typeof store.counts[id] === 'number' ? store.counts[id] : (defaultLikes[id] || 0);
+      btn.classList.toggle('is-liked', isLiked);
+      btn.setAttribute('aria-pressed', isLiked ? 'true' : 'false');
+      btn.setAttribute('aria-label', `${isLiked ? 'Unlike' : 'Like'} photo (${getLabel(count)})`);
+      btn.setAttribute('title', `${isLiked ? 'Unlike' : 'Like'} photo (${getLabel(count)})`);
+      const tooltip = btn.querySelector('.like-tooltip');
+      if (tooltip) {
+        tooltip.textContent = getLabel(count);
+      }
+    }
+
+    const buttons = document.querySelectorAll('.img-like-btn');
+    buttons.forEach(btn => {
+      const id = btn.dataset.likeId;
+      if (!id) return;
+
+      updateButtonUI(btn, id);
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const currentlyLiked = store.userLikes.includes(id);
+        if (currentlyLiked) {
+          store.userLikes = store.userLikes.filter(item => item !== id);
+          store.counts[id] = Math.max(0, (store.counts[id] || 1) - 1);
+        } else {
+          store.userLikes.push(id);
+          store.counts[id] = (store.counts[id] || 0) + 1;
+          triggerLikeEffect(btn);
+        }
+
+        saveStore();
+
+        // Update all buttons with this ID in current document
+        document.querySelectorAll(`.img-like-btn[data-like-id="${id}"]`).forEach(b => {
+          updateButtonUI(b, id);
+        });
+      });
+
+      btn.addEventListener('touchstart', () => {
+        btn.classList.add('show-tooltip');
+        setTimeout(() => btn.classList.remove('show-tooltip'), 2000);
+      }, { passive: true });
+    });
+
+    function triggerLikeEffect(btn) {
+      const badge = document.createElement('span');
+      badge.className = 'like-pop-indicator';
+      badge.textContent = '+1';
+      btn.appendChild(badge);
+      setTimeout(() => {
+        if (badge.parentNode) badge.parentNode.removeChild(badge);
+      }, 700);
+    }
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && typeof parsed === 'object') {
+            store = parsed;
+            document.querySelectorAll('.img-like-btn').forEach(b => {
+              const id = b.dataset.likeId;
+              if (id) updateButtonUI(b, id);
+            });
+          }
+        } catch (err) {}
+      }
+    });
+  }
+
+  function start() {
     initHallOfFame();
+    initPhotoLikes();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
   }
 })();

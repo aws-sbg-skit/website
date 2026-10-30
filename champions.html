@@ -206,6 +206,136 @@
       line-height: 1.6;
     }
 
+    /* Photo Like Button */
+    .img-like-btn {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 15;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8, 14, 22, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #f1f5f9;
+      cursor: pointer;
+      padding: 0;
+      outline: none;
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .img-like-btn:hover {
+      background: rgba(15, 23, 42, 0.95);
+      border-color: rgba(255, 51, 102, 0.6);
+      transform: scale(1.12);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 14px rgba(255, 51, 102, 0.35);
+      color: #ff3366;
+    }
+
+    .img-like-btn.is-liked {
+      background: rgba(255, 51, 102, 0.18);
+      border-color: rgba(255, 51, 102, 0.85);
+      color: #ff3366;
+      box-shadow: 0 0 16px rgba(255, 51, 102, 0.4);
+    }
+
+    .img-like-btn .heart-icon {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      transition: transform 0.2s ease, fill 0.2s ease, stroke 0.2s ease;
+      display: block;
+      pointer-events: none;
+    }
+
+    .img-like-btn:hover .heart-icon {
+      stroke: #ff3366;
+    }
+
+    .img-like-btn.is-liked .heart-icon {
+      fill: #ff3366;
+      stroke: #ff3366;
+      animation: heartPop 0.45s cubic-bezier(0.17, 0.89, 0.32, 1.49);
+    }
+
+    @keyframes heartPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.35); }
+      75% { transform: scale(0.88); }
+      100% { transform: scale(1); }
+    }
+
+    /* Tooltip on hover */
+    .img-like-btn .like-tooltip {
+      position: absolute;
+      bottom: calc(100% + 7px);
+      left: 0;
+      background: rgba(6, 11, 18, 0.96);
+      border: 1px solid rgba(255, 153, 0, 0.4);
+      color: #ffffff;
+      font-family: var(--mono, 'JetBrains Mono', monospace);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      padding: 4px 9px;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(4px);
+      transition: opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0.2s;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), 0 0 10px rgba(255, 153, 0, 0.15);
+      z-index: 25;
+    }
+
+    .img-like-btn .like-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 10px;
+      border-width: 4px;
+      border-style: solid;
+      border-color: rgba(6, 11, 18, 0.96) transparent transparent transparent;
+    }
+
+    .img-like-btn:hover .like-tooltip,
+    .img-like-btn:focus-visible .like-tooltip,
+    .img-like-btn.show-tooltip .like-tooltip {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .like-pop-indicator {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--mono, monospace);
+      font-size: 11px;
+      font-weight: 700;
+      color: #ff3366;
+      text-shadow: 0 0 8px rgba(255, 51, 102, 0.6);
+      pointer-events: none;
+      animation: floatPop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      z-index: 30;
+    }
+
+    @keyframes floatPop {
+      0% { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
+      30% { opacity: 1; transform: translate(-50%, -10px) scale(1.15); }
+      100% { opacity: 0; transform: translate(-50%, -24px) scale(0.9); }
+    }
+
     /* Lightbox Modal */
     .gallery-lightbox {
       position: fixed;
@@ -370,6 +500,12 @@
         <div class="champ-img-box">
           <span class="champ-badge badge-first">🏆 1st PLACE</span>
           <img src="assets/spotlight/winner-1.jpg" alt="Orientation Session Quiz Winner" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="winner-1" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">42 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
         </div>
         <div class="champ-info">
           <h3 class="champ-title">Orientation Session Quiz Winner</h3>
@@ -385,6 +521,12 @@
         <div class="champ-img-box">
           <span class="champ-badge badge-giveaway">🎁 GIVEAWAY</span>
           <img src="assets/spotlight/winner-2.jpg" alt="Giveaway 1 Winner" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="winner-2" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">35 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
         </div>
         <div class="champ-info">
           <h3 class="champ-title">Giveaway 1 Winner</h3>
@@ -400,6 +542,12 @@
         <div class="champ-img-box">
           <span class="champ-badge badge-giveaway">🎁 GIVEAWAY</span>
           <img src="assets/spotlight/winner-3.jpg" alt="Giveaway 2 Winner" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="winner-3" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">39 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
         </div>
         <div class="champ-info">
           <h3 class="champ-title">Giveaway 2 Winner</h3>
@@ -415,6 +563,12 @@
         <div class="champ-img-box">
           <span class="champ-badge badge-giveaway">🎁 GIVEAWAY</span>
           <img src="assets/spotlight/winner-4.jpg" alt="Gaming Mouse Winner" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="winner-4" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">28 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
         </div>
         <div class="champ-info">
           <h3 class="champ-title">Giveaway Winner</h3>
@@ -430,6 +584,12 @@
         <div class="champ-img-box">
           <span class="champ-badge badge-first" style="top: auto; bottom: 12px; right: 12px;">🏆 QUIZ</span>
           <img src="assets/spotlight/winner-5.jpg" alt="AWS Belt Bag Winner" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="winner-5" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">31 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
         </div>
         <div class="champ-info">
           <h3 class="champ-title">Quiz Winner</h3>
@@ -445,6 +605,12 @@
         <div class="champ-img-box">
           <span class="champ-badge badge-winners">🏆 WINNERS</span>
           <img src="assets/spotlight/winner-6.jpg" alt="Event Prizes Distribution" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="winner-6" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">47 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
         </div>
         <div class="champ-info">
           <h3 class="champ-title">Winners</h3>
@@ -460,6 +626,12 @@
         <div class="champ-img-box">
           <span class="champ-badge badge-quest">⚡ CLOUD QUEST</span>
           <img src="assets/spotlight/cloud-quest-winner-1.jpg" alt="AWS Cloud Quest Winner" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="cloud-quest-winner-1" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">33 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
         </div>
         <div class="champ-info">
           <h3 class="champ-title">AWS Cloud Quest Winner</h3>
@@ -475,6 +647,12 @@
         <div class="champ-img-box">
           <span class="champ-badge badge-quest">⚡ CLOUD QUEST</span>
           <img src="assets/spotlight/cloud-quest-winner-2.jpg" alt="AWS Cloud Quest Winner" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="cloud-quest-winner-2" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">36 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
         </div>
         <div class="champ-info">
           <h3 class="champ-title">AWS Cloud Quest Winner</h3>
@@ -490,10 +668,37 @@
         <div class="champ-img-box">
           <span class="champ-badge badge-quest">⚡ CLOUD QUEST</span>
           <img src="assets/spotlight/1.jpeg" alt="AWS Cloud Quest Hands-on Lab Arena" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="cloud-quest" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">58 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
         </div>
         <div class="champ-info">
           <h3 class="champ-title">Cloud Quest</h3>
           <p class="champ-desc">120+ Active Builders participating in hands-on cloud labs at SKIT Jaipur.</p>
+        </div>
+      </div>
+
+      <!-- 10. Winner of Quiz in AWS 101 Session -->
+      <div class="champ-card"
+        data-title="Winner of Quiz in AWS 101 Session"
+        data-desc="Winner of the technical quiz during the AWS 101 Hands-On Workshop session receiving official AWS prize."
+        data-badge="🏆 QUIZ WINNER">
+        <div class="champ-img-box">
+          <span class="champ-badge badge-first">🏆 QUIZ WINNER</span>
+          <img src="assets/spotlight/aws-101-quiz-winner.jpg" alt="Winner of Quiz in AWS 101 Session" loading="lazy">
+          <button type="button" class="img-like-btn" data-like-id="aws-101-quiz-winner" aria-label="Like photo" title="Like photo">
+            <span class="like-tooltip" role="tooltip">40 likes</span>
+            <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="champ-info">
+          <h3 class="champ-title">Winner of Quiz in AWS 101 Session</h3>
+          <p class="champ-desc">Winner of the interactive quiz during the AWS 101 Technical Workshop session.</p>
         </div>
       </div>
 
@@ -627,6 +832,7 @@
   <button class="to-top" id="toTop" aria-label="Back to top">↑</button>
 
   <script src="js/script.min.js" defer></script>
+  <script src="js/spotlight.js" defer></script>
   <script>
     // Lightbox modal functionality
     const lightbox = document.getElementById('galleryLightbox');
@@ -637,7 +843,8 @@
     const cards = document.querySelectorAll('.champ-card');
 
     cards.forEach(card => {
-      card.addEventListener('click', () => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.img-like-btn')) return;
         const img = card.querySelector('img');
         const title = card.dataset.title;
         const desc = card.dataset.desc;

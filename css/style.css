@@ -246,8 +246,9 @@
   .mh-gradient h1 .line span {
     color:var(--orange-light) !important; background:none !important; -webkit-background-clip:unset !important; opacity:1 !important; transform:none !important; filter:none !important;
   }
-  .mh-gradient h1 .line span.accent {
-    color:var(--text) !important; background:none !important; -webkit-background-clip:unset !important; -webkit-text-fill-color: var(--text) !important;
+  .mh-gradient h1 .line span.accent,
+  .mh-gradient h1 .line span.accent-green {
+    color:var(--orange-light) !important; background:none !important; -webkit-background-clip:unset !important; -webkit-text-fill-color: var(--orange-light) !important;
   }
   .mh-gradient p.lead {
     color:var(--orange-light) !important; opacity:1 !important; filter:none !important; transform:none !important;
@@ -268,12 +269,17 @@
   #magnifyWrapper.hovering .magnify-lens{ opacity:1; }
   .hero h1 .line{ display:block; overflow:hidden; }
   .hero h1 .line span{ display:inline-block; opacity:1; transform:none; }
-  .hero h1 .accent{
-    background:linear-gradient(100deg, var(--orange-light), var(--orange) 35%, var(--blue) 55%, var(--orange-light) 100%);
-    background-size:300% 100%;
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    animation:gradientShift 5s ease-in-out infinite;
+  .hero h1 .accent,
+  .hero h1 .accent-green{
+    background: linear-gradient(105deg, #ffc94d 0%, #ff9900 20%, #ff5722 42%, #29b6d8 65%, #ff9900 85%, #ffc94d 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #ff9900;
+    animation: textFlow 3.2s linear infinite;
   }
+  @keyframes textFlow{ 0%{ background-position:0% 50%; } 100%{ background-position:-200% 50%; } }
   @keyframes gradientShift{ 0%{ background-position:0% 50%; } 50%{ background-position:100% 50%; } 100%{ background-position:0% 50%; } }
 
   /* ---------- word-by-word text reveal (scroll-triggered) ---------- */
@@ -2165,6 +2171,150 @@
 
 .hof-view-all-link:hover svg {
   transform: translateX(4px);
+}
+
+/* Photo Like Button (Hall of Fame & Champions) */
+.img-like-btn {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 15;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 14, 22, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f1f5f9;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.img-like-btn:hover {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(255, 51, 102, 0.6);
+  transform: scale(1.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 14px rgba(255, 51, 102, 0.35);
+  color: #ff3366;
+}
+
+.img-like-btn.is-liked {
+  background: rgba(255, 51, 102, 0.18);
+  border-color: rgba(255, 51, 102, 0.85);
+  color: #ff3366;
+  box-shadow: 0 0 16px rgba(255, 51, 102, 0.4);
+}
+
+.img-like-btn .heart-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  transition: transform 0.2s ease, fill 0.2s ease, stroke 0.2s ease;
+  display: block;
+  pointer-events: none;
+}
+
+.img-like-btn:hover .heart-icon {
+  stroke: #ff3366;
+}
+
+.img-like-btn.is-liked .heart-icon {
+  fill: #ff3366;
+  stroke: #ff3366;
+  animation: heartPop 0.45s cubic-bezier(0.17, 0.89, 0.32, 1.49);
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  75% { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+/* Tooltip on hover */
+.img-like-btn .like-tooltip {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 0;
+  background: rgba(6, 11, 18, 0.96);
+  border: 1px solid rgba(255, 153, 0, 0.4);
+  color: #ffffff;
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0.2s;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), 0 0 10px rgba(255, 153, 0, 0.15);
+  z-index: 25;
+}
+
+.img-like-btn .like-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 10px;
+  border-width: 4px;
+  border-style: solid;
+  border-color: rgba(6, 11, 18, 0.96) transparent transparent transparent;
+}
+
+.img-like-btn:hover .like-tooltip,
+.img-like-btn:focus-visible .like-tooltip,
+.img-like-btn.show-tooltip .like-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.like-pop-indicator {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: #ff3366;
+  text-shadow: 0 0 8px rgba(255, 51, 102, 0.6);
+  pointer-events: none;
+  animation: floatPop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  z-index: 30;
+}
+
+@keyframes floatPop {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
+  30% { opacity: 1; transform: translate(-50%, -10px) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -24px) scale(0.9); }
+}
+
+.hof-banner-thumb .img-like-btn,
+.hof-mini-img-wrap .img-like-btn {
+  width: 27px;
+  height: 27px;
+  bottom: 6px;
+  left: 6px;
+}
+
+.hof-banner-thumb .img-like-btn .heart-icon,
+.hof-mini-img-wrap .img-like-btn .heart-icon {
+  width: 13px;
+  height: 13px;
 }
 
 /* Responsive Media Queries */
