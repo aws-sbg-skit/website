@@ -10,7 +10,122 @@
   const STORAGE_KEY_REGISTRATIONS = 'aws_sbg_registrations';
   const STORAGE_KEY_CONFIG = 'aws_sbg_firebase_config';
   const STORAGE_KEY_AUTH = 'aws_sbg_admin_auth';
+  const STORAGE_KEY_CHAMPIONS = 'aws_sbg_champions_v1';
   const SESSION_AUTH_TOKEN = 'aws_sbg_admin_session';
+
+  // Seed default champions mirroring champions.html
+  const DEFAULT_CHAMPIONS = [
+    {
+      id: 'champ-1',
+      title: 'Orientation Session Quiz Winner',
+      badge: '🏆 1st PLACE',
+      badgeClass: 'badge-first',
+      imageUrl: 'assets/spotlight/winner-1.jpg',
+      subtitle: 'Quiz Champions • Tech Merch & Certificates awarded during our inaugural session.',
+      desc: 'Awarded to the top quiz champions during our inaugural AWS SBG SKIT Orientation Session! Quiz Champions received official certificates & tech merchandise.',
+      likes: 42,
+      createdAt: '2026-07-22T10:00:00Z'
+    },
+    {
+      id: 'champ-2',
+      title: 'Giveaway 1 Winner',
+      badge: '🎁 GIVEAWAY',
+      badgeClass: 'badge-giveaway',
+      imageUrl: 'assets/spotlight/winner-2.jpg',
+      subtitle: 'Exclusive Tech Hardware Giveaway — Gaming Mouse winner.',
+      desc: 'Winner of our exclusive community tech hardware giveaway — receiving a high-performance gaming mouse.',
+      likes: 35,
+      createdAt: '2026-08-10T10:00:00Z'
+    },
+    {
+      id: 'champ-3',
+      title: 'Giveaway 2 Winner',
+      badge: '🎁 GIVEAWAY',
+      badgeClass: 'badge-giveaway',
+      imageUrl: 'assets/spotlight/winner-3.jpg',
+      subtitle: 'Celebrating our student builder with high-fidelity wireless earbuds giveaway prize.',
+      desc: 'Celebrating our student builder with high-fidelity wireless earbuds giveaway prize.',
+      likes: 39,
+      createdAt: '2026-09-01T10:00:00Z'
+    },
+    {
+      id: 'champ-4',
+      title: 'Giveaway Winner',
+      badge: '🎁 GIVEAWAY',
+      badgeClass: 'badge-giveaway',
+      imageUrl: 'assets/spotlight/winner-4.jpg',
+      subtitle: 'Gaming Mouse Winner awarded for outstanding participation and trivia performance during AWS Cloud Quest.',
+      desc: 'Gaming Mouse Winner awarded for outstanding participation and trivia performance during AWS Cloud Quest.',
+      likes: 38,
+      createdAt: '2026-09-15T10:00:00Z'
+    },
+    {
+      id: 'champ-5',
+      title: 'Quiz Winner',
+      badge: '🏆 QUIZ',
+      badgeClass: 'badge-first',
+      imageUrl: 'assets/spotlight/winner-5.jpg',
+      subtitle: 'AWS Belt Bag Winner receiving official AWS community merchandise kit for the AWS Quiz.',
+      desc: 'AWS Belt Bag Winner receiving official AWS community merchandise kit for the AWS Quiz.',
+      likes: 45,
+      createdAt: '2026-09-27T10:00:00Z'
+    },
+    {
+      id: 'champ-6',
+      title: 'Winners',
+      badge: '🏆 WINNERS',
+      badgeClass: 'badge-winners',
+      imageUrl: 'assets/spotlight/winner-6.jpg',
+      subtitle: 'Event Prizes Distribution — celebrating outstanding student builders and quiz winners with official AWS community swag kits and notebooks.',
+      desc: 'Event Prizes Distribution — celebrating outstanding student builders and quiz winners with official AWS community swag kits and notebooks.',
+      likes: 49,
+      createdAt: '2026-10-01T10:00:00Z'
+    },
+    {
+      id: 'champ-7',
+      title: 'AWS Cloud Quest Winner',
+      badge: '⚡ CLOUD QUEST',
+      badgeClass: 'badge-first',
+      imageUrl: 'assets/spotlight/cloud-quest-winner-1.jpg',
+      subtitle: 'AWS Cloud Quest Challenge Winner receiving the official AWS community merchandise kit.',
+      desc: 'AWS Cloud Quest Challenge Winner receiving the official AWS community merchandise kit.',
+      likes: 37,
+      createdAt: '2026-10-13T10:00:00Z'
+    },
+    {
+      id: 'champ-8',
+      title: 'AWS Cloud Quest Winner',
+      badge: '⚡ CLOUD QUEST',
+      badgeClass: 'badge-first',
+      imageUrl: 'assets/spotlight/cloud-quest-winner-2.jpg',
+      subtitle: 'AWS Cloud Quest Challenge Winner receiving the official AWS community swag kit.',
+      desc: 'AWS Cloud Quest Challenge Winner receiving the official AWS community swag kit.',
+      likes: 41,
+      createdAt: '2026-10-14T10:00:00Z'
+    },
+    {
+      id: 'champ-9',
+      title: 'Cloud Quest Trivia Champion',
+      badge: '⚡ CLOUD QUEST',
+      badgeClass: 'badge-first',
+      imageUrl: 'assets/spotlight/aws-101-quiz-winner.jpg',
+      subtitle: '120+ Active Builders participated in the hands-on 3D RPG cloud learning arena at SKIT Jaipur.',
+      desc: '120+ Active Builders participated in the hands-on 3D RPG cloud learning arena at SKIT Jaipur.',
+      likes: 54,
+      createdAt: '2026-10-15T10:00:00Z'
+    },
+    {
+      id: 'champ-10',
+      title: 'Winner of Quiz in AWS 101 Session',
+      badge: '🏆 QUIZ WINNER',
+      badgeClass: 'badge-first',
+      imageUrl: 'assets/spotlight/aws-101-quiz-winner.jpg',
+      subtitle: 'Winner of the interactive quiz during the AWS 101 Technical Workshop session.',
+      desc: 'Winner of the technical quiz during the AWS 101 Hands-On Workshop session receiving official AWS prize.',
+      likes: 40,
+      createdAt: '2026-10-26T10:00:00Z'
+    }
+  ];
 
   // Seed default events mirroring current index.html
   const DEFAULT_EVENTS = [
@@ -246,6 +361,9 @@
         if (!stored) {
           localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(DEFAULT_EVENTS));
         }
+        if (!localStorage.getItem(STORAGE_KEY_CHAMPIONS)) {
+          localStorage.setItem(STORAGE_KEY_CHAMPIONS, JSON.stringify(DEFAULT_CHAMPIONS));
+        }
         if (!localStorage.getItem(STORAGE_KEY_REGISTRATIONS)) {
           localStorage.setItem(STORAGE_KEY_REGISTRATIONS, JSON.stringify([]));
         }
@@ -349,28 +467,44 @@
               }));
               return { success: true, username: data.username };
             }
-          } else if (response.status === 401 || response.status === 429 || response.status === 400) {
+          } else if (response.status === 429) {
             const errData = await response.json().catch(() => ({}));
-            const errMsg = (errData.errors && errData.errors[0]) || 'Invalid username or password.';
+            const errMsg = (errData.errors && errData.errors[0]) || 'Too many failed login attempts. Please wait 5 minutes.';
             return { success: false, message: errMsg };
           }
+          // Note: If response is 401, fall through to check custom/updated credentials below
         } catch (networkErr) {
           // Fall through to local fallback authentication if offline or static file server
         }
       }
 
-      // Local Fallback Verification
+      // Check stored custom credentials (LocalStorage & Firestore Sync)
       const inputHash = await sha256(`${cleanUser}:${password}`);
 
       try {
-        const authDataStr = localStorage.getItem(STORAGE_KEY_AUTH);
         let validUser = 'admin';
         let validHash = DEFAULT_AUTH_HASH;
 
+        // Sync from Firestore if available
+        if (this.isFirebaseReady && this.firestore) {
+          try {
+            const fireDoc = await this.firestore.collection('settings').doc('admin_auth').get();
+            if (fireDoc.exists) {
+              const data = fireDoc.data();
+              if (data && data.hash) {
+                validUser = (data.username || 'admin').toLowerCase();
+                validHash = data.hash;
+                localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(data));
+              }
+            }
+          } catch (e) {}
+        }
+
+        const authDataStr = localStorage.getItem(STORAGE_KEY_AUTH);
         if (authDataStr) {
           const authData = JSON.parse(authDataStr);
-          validUser = (authData.username || 'admin').toLowerCase();
-          validHash = authData.hash || DEFAULT_AUTH_HASH;
+          validUser = (authData.username || validUser).toLowerCase();
+          validHash = authData.hash || validHash;
         }
 
         if (cleanUser === validUser && inputHash === validHash) {
@@ -417,26 +551,89 @@
     }
 
     async changeAdminPassword(currentPassword, newUsername, newPassword) {
-      const currentUser = this.getCurrentUser() || 'admin';
-      const check = await this.login(currentUser, currentPassword);
-      if (!check.success) {
+      // 1. Retrieve active stored credentials
+      const authDataStr = localStorage.getItem(STORAGE_KEY_AUTH);
+      let activeUser = 'admin';
+      let activeHash = DEFAULT_AUTH_HASH;
+
+      if (authDataStr) {
+        try {
+          const authData = JSON.parse(authDataStr);
+          activeUser = (authData.username || 'admin').toLowerCase();
+          activeHash = authData.hash || DEFAULT_AUTH_HASH;
+        } catch (e) {}
+      }
+
+      // 2. Verify current password
+      const inputHash = await sha256(`${activeUser}:${currentPassword}`);
+      if (inputHash !== activeHash) {
         return { success: false, message: 'Current password is incorrect.' };
       }
 
+      // 3. Validate new password
       if (!newPassword || newPassword.length < 6) {
         return { success: false, message: 'New password must be at least 6 characters.' };
       }
 
-      const finalUser = (newUsername && newUsername.trim()) ? newUsername.trim().toLowerCase() : currentUser;
+      const finalUser = (newUsername && newUsername.trim()) ? newUsername.trim().toLowerCase() : activeUser;
       const newHash = await sha256(`${finalUser}:${newPassword}`);
 
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify({
+      const newAuthData = {
         username: finalUser,
         hash: newHash,
         updatedAt: new Date().toISOString()
-      }));
+      };
 
-      return { success: true, message: 'Admin credentials updated successfully.' };
+      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(newAuthData));
+
+      // Also persist to Firestore if connected
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          await this.firestore.collection('settings').doc('admin_auth').set(newAuthData);
+        } catch (e) {
+          console.warn('Failed to sync updated auth to Firestore:', e);
+        }
+      }
+
+      // Update current session
+      try {
+        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN);
+        if (session) {
+          const parsed = JSON.parse(session);
+          parsed.username = finalUser;
+          sessionStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify(parsed));
+        }
+      } catch (e) {}
+
+      return { success: true, message: 'Admin credentials updated successfully!' };
+    }
+
+    async resetAdminCredentials() {
+      const defaultAuthData = {
+        username: 'admin',
+        hash: DEFAULT_AUTH_HASH,
+        updatedAt: new Date().toISOString()
+      };
+
+      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(defaultAuthData));
+
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          await this.firestore.collection('settings').doc('admin_auth').set(defaultAuthData);
+        } catch (e) {}
+      }
+
+      // Update active session if logged in
+      try {
+        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN);
+        if (session) {
+          const parsed = JSON.parse(session);
+          parsed.username = 'admin';
+          sessionStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify(parsed));
+        }
+      } catch (e) {}
+
+      return { success: true, message: 'Admin credentials reset to default (Username: admin, Password: password123)' };
     }
 
     // ==========================================
@@ -512,6 +709,15 @@
         bannerUrl: eventData.bannerUrl ? eventData.bannerUrl.trim() : '',
         registrationType: eventData.registrationType === 'external' ? 'external' : 'native',
         externalRegistrationUrl: eventData.registrationType === 'external' ? (eventData.externalRegistrationUrl || '').trim() : '',
+        registrationFields: eventData.registrationFields || {
+          phone: true,
+          branch: true,
+          year: true,
+          rollNumber: true,
+          query: true,
+          custom: false,
+          customLabel: ''
+        },
         isFeatured: !!eventData.isFeatured,
         updatedAt: now,
         createdAt: eventData.createdAt || now
@@ -611,7 +817,7 @@
     }
 
     async registerAttendee(data) {
-      const { eventId, fullName, email, phone, college, branch, year, rollNumber, query } = data;
+      const { eventId, fullName, email, phone, college, branch, year, rollNumber, query, customQuestion, customAnswer, customResponses } = data;
 
       // 1. Strict Validation
       if (!eventId) throw new Error('Event ID is missing.');
@@ -630,20 +836,6 @@
         throw new Error('Please enter a valid email address.');
       }
 
-      const cleanPhone = (phone || '').trim().replace(/[\s\-\+]/g, '');
-      const normalizedPhone = cleanPhone.startsWith('91') && cleanPhone.length === 12 ? cleanPhone.substring(2) : cleanPhone;
-      if (!/^[6-9]\d{9}$/.test(normalizedPhone)) {
-        throw new Error('Mobile number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.');
-      }
-
-      const cleanRoll = (rollNumber || '').trim().toUpperCase();
-      if (!cleanRoll || cleanRoll.length < 4 || cleanRoll.length > 25) {
-        throw new Error('Roll Number must be between 4 and 25 characters.');
-      }
-      if (!/^[A-Z0-9\/\-]{4,25}$/.test(cleanRoll)) {
-        throw new Error('Roll Number can only contain alphanumeric characters, hyphens, and slashes.');
-      }
-
       // Check event exists and is open
       const event = await this.getEventById(eventId);
       if (!event) {
@@ -651,6 +843,60 @@
       }
       if (!event.registrationOpen) {
         throw new Error('Registrations for this event are currently closed.');
+      }
+
+      const fields = event.registrationFields || {
+        phone: true,
+        branch: true,
+        year: true,
+        rollNumber: true,
+        query: true,
+        custom: false,
+        customQuestions: []
+      };
+
+      // Check custom questions requiredness
+      if (Array.isArray(fields.customQuestions)) {
+        for (const cq of fields.customQuestions) {
+          if (cq && cq.required) {
+            let answered = false;
+            if (Array.isArray(customResponses)) {
+              const matched = customResponses.find(cr => cr && cr.prompt === cq.prompt);
+              if (matched && matched.answer && matched.answer.trim()) {
+                answered = true;
+              }
+            } else if (customQuestion === cq.prompt && customAnswer && customAnswer.trim()) {
+              answered = true;
+            }
+            if (!answered) {
+              throw new Error(`Please answer the required question: "${cq.prompt}"`);
+            }
+          }
+        }
+      }
+
+      // Mobile number validation (mandatory only if enabled for this event)
+      let normalizedPhone = '';
+      if (fields.phone !== false || phone) {
+        const cleanPhone = (phone || '').trim().replace(/[\s\-\+]/g, '');
+        normalizedPhone = cleanPhone.startsWith('91') && cleanPhone.length === 12 ? cleanPhone.substring(2) : cleanPhone;
+        if (fields.phone !== false && !/^[6-9]\d{9}$/.test(normalizedPhone)) {
+          throw new Error('Mobile number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.');
+        }
+      }
+
+      // Roll number validation (mandatory only if enabled for this event)
+      let cleanRoll = '';
+      if (fields.rollNumber !== false || rollNumber) {
+        cleanRoll = (rollNumber || '').trim().toUpperCase();
+        if (fields.rollNumber !== false) {
+          if (!cleanRoll || cleanRoll.length < 4 || cleanRoll.length > 25) {
+            throw new Error('Roll Number must be between 4 and 25 characters.');
+          }
+          if (!/^[A-Z0-9\/\-]{4,25}$/.test(cleanRoll)) {
+            throw new Error('Roll Number can only contain alphanumeric characters, hyphens, and slashes.');
+          }
+        }
       }
 
       // Check current capacity
@@ -686,7 +932,9 @@
               branch: branch || 'CSE',
               year: year || '1st Year',
               rollNumber: cleanRoll,
-              query: (query || '').trim()
+              query: (query || '').trim(),
+              customQuestion: (customQuestion || (fields.custom && fields.customLabel) || '').trim(),
+              customAnswer: (customAnswer || '').trim()
             })
           });
 
@@ -726,6 +974,9 @@
         year: year ? year.trim() : '1st Year',
         rollNumber: cleanRoll,
         query: (query || '').trim(),
+        customResponses: Array.isArray(customResponses) ? customResponses : [],
+        customQuestion: (customQuestion || (fields.custom && fields.customLabel) || '').trim(),
+        customAnswer: (customAnswer || '').trim(),
         registeredAt: new Date().toISOString()
       };
 
@@ -775,7 +1026,21 @@
         return null;
       }
 
-      const headers = [
+      // Collect all distinct custom question prompts across these registrations
+      const customPrompts = [];
+      registrations.forEach(r => {
+        if (Array.isArray(r.customResponses)) {
+          r.customResponses.forEach(cr => {
+            if (cr && cr.prompt && !customPrompts.includes(cr.prompt)) {
+              customPrompts.push(cr.prompt);
+            }
+          });
+        } else if (r.customQuestion && !customPrompts.includes(r.customQuestion)) {
+          customPrompts.push(r.customQuestion);
+        }
+      });
+
+      const baseHeaders = [
         'Registration ID',
         'Registered At',
         'Event Title',
@@ -789,19 +1054,39 @@
         'Questions / Notes'
       ];
 
-      const rows = registrations.map(r => [
-        `"${r.id || ''}"`,
-        `"${r.registeredAt ? new Date(r.registeredAt).toLocaleString() : ''}"`,
-        `"${(r.eventTitle || eventTitle).replace(/"/g, '""')}"`,
-        `"${(r.fullName || '').replace(/"/g, '""')}"`,
-        `"${(r.email || '').replace(/"/g, '""')}"`,
-        `"${(r.phone || '').replace(/"/g, '""')}"`,
-        `"${(r.college || '').replace(/"/g, '""')}"`,
-        `"${(r.branch || '').replace(/"/g, '""')}"`,
-        `"${(r.year || '').replace(/"/g, '""')}"`,
-        `"${(r.rollNumber || '').replace(/"/g, '""')}"`,
-        `"${(r.query || '').replace(/"/g, '""')}"`
-      ]);
+      const headers = [
+        ...baseHeaders,
+        ...customPrompts.map(p => `"${p.replace(/"/g, '""')}"`)
+      ];
+
+      const rows = registrations.map(r => {
+        const row = [
+          `"${r.id || ''}"`,
+          `"${r.registeredAt ? new Date(r.registeredAt).toLocaleString() : ''}"`,
+          `"${(r.eventTitle || eventTitle).replace(/"/g, '""')}"`,
+          `"${(r.fullName || '').replace(/"/g, '""')}"`,
+          `"${(r.email || '').replace(/"/g, '""')}"`,
+          `"${(r.phone || '').replace(/"/g, '""')}"`,
+          `"${(r.college || '').replace(/"/g, '""')}"`,
+          `"${(r.branch || '').replace(/"/g, '""')}"`,
+          `"${(r.year || '').replace(/"/g, '""')}"`,
+          `"${(r.rollNumber || '').replace(/"/g, '""')}"`,
+          `"${(r.query || '').replace(/"/g, '""')}"`
+        ];
+
+        customPrompts.forEach(p => {
+          let ans = '';
+          if (Array.isArray(r.customResponses)) {
+            const found = r.customResponses.find(cr => cr && cr.prompt === p);
+            if (found) ans = found.answer || '';
+          } else if (r.customQuestion === p) {
+            ans = r.customAnswer || '';
+          }
+          row.push(`"${ans.replace(/"/g, '""')}"`);
+        });
+
+        return row;
+      });
 
       const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\r\n');
       return csvContent;
@@ -817,6 +1102,102 @@
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+    }
+
+    // ==========================================
+    // HALL OF FAME / CHAMPIONS CRUD
+    // ==========================================
+    async getChampions() {
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          const snapshot = await this.firestore.collection('champions').orderBy('createdAt', 'desc').get();
+          if (!snapshot.empty) {
+            const list = [];
+            snapshot.forEach(doc => {
+              list.push({ id: doc.id, ...doc.data() });
+            });
+            localStorage.setItem(STORAGE_KEY_CHAMPIONS, JSON.stringify(list));
+            return list;
+          } else {
+            console.log('Seeding initial Hall of Fame champions into Firestore...');
+            const seedPromises = DEFAULT_CHAMPIONS.map(ch =>
+              this.firestore.collection('champions').doc(ch.id).set(ch)
+            );
+            await Promise.all(seedPromises);
+            localStorage.setItem(STORAGE_KEY_CHAMPIONS, JSON.stringify(DEFAULT_CHAMPIONS));
+            return DEFAULT_CHAMPIONS;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch champions from Firestore, falling back to local storage:', err);
+        }
+      }
+
+      // Local storage fallback
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY_CHAMPIONS);
+        if (stored) return JSON.parse(stored);
+      } catch (e) {}
+
+      return DEFAULT_CHAMPIONS;
+    }
+
+    async saveChampion(champData) {
+      let champions = await this.getChampions();
+      const isNew = !champData.id;
+      const now = new Date().toISOString();
+
+      const normalizedChamp = {
+        id: champData.id || ('champ-' + Date.now().toString(36)),
+        title: (champData.title || '').trim(),
+        badge: (champData.badge || '🏆 WINNER').trim(),
+        badgeClass: champData.badgeClass || 'badge-first',
+        subtitle: (champData.subtitle || '').trim(),
+        desc: (champData.desc || '').trim(),
+        event: (champData.event || '').trim(),
+        imageUrl: (champData.imageUrl || '').trim(),
+        likes: typeof champData.likes === 'number' ? champData.likes : Math.floor(Math.random() * 20) + 30,
+        createdAt: champData.createdAt || now,
+        updatedAt: now
+      };
+
+      if (isNew) {
+        champions.unshift(normalizedChamp);
+      } else {
+        const idx = champions.findIndex(c => c.id === normalizedChamp.id);
+        if (idx !== -1) {
+          champions[idx] = { ...champions[idx], ...normalizedChamp };
+        } else {
+          champions.unshift(normalizedChamp);
+        }
+      }
+
+      localStorage.setItem(STORAGE_KEY_CHAMPIONS, JSON.stringify(champions));
+
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          await this.firestore.collection('champions').doc(normalizedChamp.id).set(normalizedChamp, { merge: true });
+        } catch (err) {
+          console.warn('Failed to save champion to Firestore:', err);
+        }
+      }
+
+      return normalizedChamp;
+    }
+
+    async deleteChampion(champId) {
+      let champions = await this.getChampions();
+      champions = champions.filter(c => c.id !== champId);
+      localStorage.setItem(STORAGE_KEY_CHAMPIONS, JSON.stringify(champions));
+
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          await this.firestore.collection('champions').doc(champId).delete();
+        } catch (err) {
+          console.warn('Failed to delete champion from Firestore:', err);
+        }
+      }
+
+      return { success: true };
     }
   }
 

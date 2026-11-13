@@ -843,51 +843,120 @@
 
   <button class="to-top" id="toTop" aria-label="Back to top">↑</button>
 
+  <!-- Firebase & Data Service -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/events-service.js"></script>
   <script src="js/script.min.js" defer></script>
   <script src="js/spotlight.js" defer></script>
   <script>
-    // Lightbox modal functionality
-    const lightbox = document.getElementById('galleryLightbox');
-    const glImg = document.getElementById('glImg');
-    const glCaption = document.getElementById('glCaption');
-    const glClose = document.getElementById('glClose');
-    const glBackdrop = document.getElementById('glBackdrop');
-    const cards = document.querySelectorAll('.champ-card');
+    (async function() {
+      // Dynamic Champions Loader
+      const grid = document.getElementById('championsGrid');
+      if (grid && window.AwsSbgEventsService) {
+        try {
+          const champs = await window.AwsSbgEventsService.getChampions();
+          if (champs && champs.length > 0) {
+            function escapeHTML(str) {
+              if (!str) return '';
+              return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+            }
 
-    cards.forEach(card => {
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.img-like-btn')) return;
-        const img = card.querySelector('img');
-        const title = card.dataset.title;
-        const desc = card.dataset.desc;
-        const badge = card.dataset.badge;
+            const cardsHTML = champs.map(ch => {
+              const img = ch.imageUrl || 'assets/spotlight/winner-1.jpg';
+              const badgeClass = ch.badgeClass || (ch.badge && ch.badge.includes('GIVEAWAY') ? 'badge-giveaway' : (ch.badge && ch.badge.includes('WINNER') ? 'badge-winners' : 'badge-first'));
+              return `
+                <div class="champ-card"
+                  data-title="${escapeHTML(ch.title)}"
+                  data-desc="${escapeHTML(ch.desc || '')}"
+                  data-badge="${escapeHTML(ch.badge || '🏆 WINNER')}">
+                  <div class="champ-img-box">
+                    <span class="champ-badge ${badgeClass}">${escapeHTML(ch.badge || '🏆 WINNER')}</span>
+                    <img src="${escapeHTML(img)}" alt="${escapeHTML(ch.title)}" loading="lazy" onerror="this.src='assets/spotlight/winner-1.jpg'">
+                    <button type="button" class="img-like-btn" data-like-id="${escapeHTML(ch.id)}" aria-label="Like photo" title="Like photo">
+                      <span class="like-tooltip" role="tooltip">${ch.likes || 0} likes</span>
+                      <svg class="heart-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="champ-info">
+                    <h3 class="champ-title">${escapeHTML(ch.title)}</h3>
+                    <p class="champ-desc">${escapeHTML(ch.subtitle || ch.desc || '')}</p>
+                  </div>
+                </div>
+              `;
+            }).join('');
 
-        glImg.src = img.src;
-        glImg.alt = title;
+            const meetupCardHTML = `
+              <div class="meetup-cta-card">
+                <h3>Explore more event photos</h3>
+                <p>Browse through all our events on our official meetup community page.</p>
+                <a href="https://www.meetup.com/aws-sbg-at-swami-keshvanand-institute-of-technology/photos/" target="_blank" rel="noopener" class="btn btn-primary">
+                  View Meetup Albums ↗
+                </a>
+              </div>
+            `;
 
-        glCaption.innerHTML = `
-          <div style="display:inline-block;margin-bottom:8px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#f59e0b;background:rgba(245,158,11,0.15);padding:3px 10px;border-radius:999px;border:1px solid rgba(245,158,11,0.4);">${badge}</div>
-          <div style="font-family:var(--display);font-size:20px;font-weight:700;color:#ffffff;margin-bottom:4px;">${title}</div>
-          <div style="font-size:14px;color:#94a3b8;font-weight:400;line-height:1.5;">${desc}</div>
-        `;
-
-        lightbox.classList.add('open');
-        document.body.style.overflow = 'hidden';
-      });
-    });
-
-    function closeLightbox() {
-      lightbox.classList.remove('open');
-      document.body.style.overflow = '';
-    }
-
-    glClose.addEventListener('click', closeLightbox);
-    glBackdrop.addEventListener('click', closeLightbox);
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && lightbox.classList.contains('open')) {
-        closeLightbox();
+            grid.innerHTML = cardsHTML + meetupCardHTML;
+          }
+        } catch (e) {
+          console.warn('Could not load dynamic champions:', e);
+        }
       }
-    });
+
+      // Lightbox modal functionality
+      const lightbox = document.getElementById('galleryLightbox');
+      const glImg = document.getElementById('glImg');
+      const glCaption = document.getElementById('glCaption');
+      const glClose = document.getElementById('glClose');
+      const glBackdrop = document.getElementById('glBackdrop');
+
+      function attachLightboxListeners() {
+        const cards = document.querySelectorAll('.champ-card');
+        cards.forEach(card => {
+          card.addEventListener('click', (e) => {
+            if (e.target.closest('.img-like-btn')) return;
+            const img = card.querySelector('img');
+            const title = card.dataset.title;
+            const desc = card.dataset.desc;
+            const badge = card.dataset.badge;
+
+            glImg.src = img.src;
+            glImg.alt = title;
+
+            glCaption.innerHTML = `
+              <div style="display:inline-block;margin-bottom:8px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#f59e0b;background:rgba(245,158,11,0.15);padding:3px 10px;border-radius:999px;border:1px solid rgba(245,158,11,0.4);">${badge}</div>
+              <div style="font-family:var(--display);font-size:20px;font-weight:700;color:#ffffff;margin-bottom:4px;">${title}</div>
+              <div style="font-size:14px;color:#94a3b8;font-weight:400;line-height:1.5;">${desc}</div>
+            `;
+
+            lightbox.classList.add('open');
+            document.body.style.overflow = 'hidden';
+          });
+        });
+      }
+
+      attachLightboxListeners();
+
+      function closeLightbox() {
+        lightbox.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+
+      if (glClose) glClose.addEventListener('click', closeLightbox);
+      if (glBackdrop) glBackdrop.addEventListener('click', closeLightbox);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lightbox.classList.contains('open')) {
+          closeLightbox();
+        }
+      });
+    })();
   </script>
 </body>
 

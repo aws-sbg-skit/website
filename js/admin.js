@@ -27,10 +27,12 @@
   const statTotalEvents = document.getElementById('statTotalEvents');
   const statOpenEvents = document.getElementById('statOpenEvents');
   const statTotalRegistrations = document.getElementById('statTotalRegistrations');
+  const statTotalChampions = document.getElementById('statTotalChampions');
   const statDbStatus = document.getElementById('statDbStatus');
   const statDbSyncInfo = document.getElementById('statDbSyncInfo');
   const badgeEventsCount = document.getElementById('badgeEventsCount');
   const badgeRegsCount = document.getElementById('badgeRegsCount');
+  const badgeChampionsCount = document.getElementById('badgeChampionsCount');
 
   // DOM Elements - Events Tab
   const adminEventsGrid = document.getElementById('adminEventsGrid');
@@ -45,6 +47,27 @@
   const exportCsvBtn = document.getElementById('exportCsvBtn');
   const copyEmailsBtn = document.getElementById('copyEmailsBtn');
 
+  // DOM Elements - Hall of Fame / Champions Tab
+  const adminChampionsGrid = document.getElementById('adminChampionsGrid');
+  const champSearchInput = document.getElementById('champSearchInput');
+  const openNewChampionModalBtn = document.getElementById('openNewChampionModalBtn');
+  const championModalOverlay = document.getElementById('championModalOverlay');
+  const championEditorForm = document.getElementById('championEditorForm');
+  const modalChampionTitle = document.getElementById('modalChampionTitle');
+  const editChampionId = document.getElementById('editChampionId');
+  const formChampTitle = document.getElementById('formChampTitle');
+  const formChampBadge = document.getElementById('formChampBadge');
+  const formChampEvent = document.getElementById('formChampEvent');
+  const formChampSubtitle = document.getElementById('formChampSubtitle');
+  const formChampDesc = document.getElementById('formChampDesc');
+  const formChampImageUrl = document.getElementById('formChampImageUrl');
+  const formChampFile = document.getElementById('formChampFile');
+  const champImgPreviewContainer = document.getElementById('champImgPreviewContainer');
+  const champImgPreview = document.getElementById('champImgPreview');
+  const closeChampionModalBtn = document.getElementById('closeChampionModalBtn');
+  const cancelChampionModalBtn = document.getElementById('cancelChampionModalBtn');
+  const saveChampionBtnText = document.getElementById('saveChampionBtnText');
+
   // DOM Elements - Settings Tab
   const firebaseConfigInput = document.getElementById('firebaseConfigInput');
   const saveFirebaseConfigBtn = document.getElementById('saveFirebaseConfigBtn');
@@ -53,6 +76,7 @@
   const currentPasswordInput = document.getElementById('currentPasswordInput');
   const newUsernameInput = document.getElementById('newUsernameInput');
   const newPasswordInput = document.getElementById('newPasswordInput');
+  const resetDefaultCredsBtn = document.getElementById('resetDefaultCredsBtn');
 
   // DOM Elements - Event Modal
   const eventModalOverlay = document.getElementById('eventModalOverlay');
@@ -73,6 +97,19 @@
   const formEventRegType = document.getElementById('formEventRegType');
   const formEventExternalUrl = document.getElementById('formEventExternalUrl');
   const externalRegUrlGroup = document.getElementById('externalRegUrlGroup');
+
+  // Registration Fields Selector Elements
+  const nativeFieldsConfigGroup = document.getElementById('nativeFieldsConfigGroup');
+  const fieldReqPhone = document.getElementById('fieldReqPhone');
+  const fieldReqBranch = document.getElementById('fieldReqBranch');
+  const fieldReqYear = document.getElementById('fieldReqYear');
+  const fieldReqRoll = document.getElementById('fieldReqRoll');
+  const fieldReqQuery = document.getElementById('fieldReqQuery');
+  const customQuestionsSection = document.getElementById('customQuestionsSection');
+  const addCustomQuestionBtn = document.getElementById('addCustomQuestionBtn');
+  const customQuestionsList = document.getElementById('customQuestionsList');
+  const noCustomQuestionsMsg = document.getElementById('noCustomQuestionsMsg');
+
   const closeEventModalBtn = document.getElementById('closeEventModalBtn');
   const cancelEventModalBtn = document.getElementById('cancelEventModalBtn');
   const saveEventBtnText = document.getElementById('saveEventBtnText');
@@ -86,13 +123,23 @@
   // Cached state
   let cachedEvents = [];
   let cachedRegistrations = [];
+  let cachedChampions = [];
 
   // ===================================================
   // INITIALIZATION & AUTH STATE
   // ===================================================
   function init() {
+    if (adminPasswordInput) adminPasswordInput.value = '';
+    if (adminLoginForm) adminLoginForm.reset();
     checkAuthState();
     attachEventListeners();
+
+    // Prevent browser autofill from writing stored password into the login input
+    setTimeout(() => {
+      if (!service.isAuthenticated() && adminPasswordInput) {
+        adminPasswordInput.value = '';
+      }
+    }, 150);
   }
 
   function checkAuthState() {
@@ -106,7 +153,13 @@
   function showLogin() {
     loginWrapper.style.display = 'flex';
     adminApp.style.display = 'none';
-    if (adminUsernameInput) adminUsernameInput.focus();
+    if (adminPasswordInput) adminPasswordInput.value = '';
+    if (adminUsernameInput) adminUsernameInput.value = '';
+    if (adminLoginForm) adminLoginForm.reset();
+    setTimeout(() => {
+      if (adminPasswordInput) adminPasswordInput.value = '';
+      if (adminUsernameInput) adminUsernameInput.focus();
+    }, 50);
   }
 
   function showDashboard() {
@@ -122,7 +175,7 @@
 
   async function loadDashboardData() {
     updateDbStatusBadge();
-    await Promise.all([loadEvents(), loadRegistrations()]);
+    await Promise.all([loadEvents(), loadRegistrations(), loadChampions()]);
     updateStats();
     loadFirebaseConfigView();
   }
@@ -228,10 +281,13 @@
       if (res.success) {
         failedLoginAttempts = 0;
         if (lockoutTimer) clearInterval(lockoutTimer);
+        if (adminPasswordInput) adminPasswordInput.value = '';
+        if (adminLoginForm) adminLoginForm.reset();
         showDashboard();
         showToast(`Welcome back, ${res.username}!`);
       } else {
         failedLoginAttempts++;
+        if (adminPasswordInput) adminPasswordInput.value = '';
         if (failedLoginAttempts >= 5) {
           startLockout(60);
         } else {
@@ -240,6 +296,7 @@
         }
       }
     } catch (err) {
+      if (adminPasswordInput) adminPasswordInput.value = '';
       loginErrorText.textContent = err.message || 'Sign in error';
       loginErrorMsg.style.display = 'flex';
     } finally {
@@ -252,8 +309,29 @@
 
   function handleLogout() {
     service.logout();
+    if (adminPasswordInput) adminPasswordInput.value = '';
+    if (adminUsernameInput) adminUsernameInput.value = '';
+    if (adminLoginForm) adminLoginForm.reset();
     showLogin();
     showToast('Signed out of admin portal.', 'success');
+  }
+
+  async function handleResetToDefault() {
+    if (confirm('Are you sure you want to reset admin credentials back to default?\n\nUsername: admin\nPassword: password123')) {
+      try {
+        const res = await service.resetAdminCredentials();
+        showToast(res.message, 'success');
+        if (adminUsernameInput) adminUsernameInput.value = 'admin';
+        if (adminPasswordInput) {
+          adminPasswordInput.value = '';
+          adminPasswordInput.focus();
+        }
+        if (navUsername) navUsername.textContent = 'admin';
+        if (navUserInitial) navUserInitial.textContent = 'A';
+      } catch (err) {
+        alert('Error resetting credentials: ' + err.message);
+      }
+    }
   }
 
   // ===================================================
@@ -264,12 +342,19 @@
       tab.classList.toggle('active', tab.dataset.tab === tabName);
     });
 
-    document.getElementById('tabEventsView').style.display = tabName === 'events' ? 'block' : 'none';
-    document.getElementById('tabRegistrationsView').style.display = tabName === 'registrations' ? 'block' : 'none';
-    document.getElementById('tabSettingsView').style.display = tabName === 'settings' ? 'block' : 'none';
+    const tabEvents = document.getElementById('tabEventsView');
+    const tabRegs = document.getElementById('tabRegistrationsView');
+    const tabChamps = document.getElementById('tabChampionsView');
+    const tabSettings = document.getElementById('tabSettingsView');
+
+    if (tabEvents) tabEvents.style.display = tabName === 'events' ? 'block' : 'none';
+    if (tabRegs) tabRegs.style.display = tabName === 'registrations' ? 'block' : 'none';
+    if (tabChamps) tabChamps.style.display = tabName === 'champions' ? 'block' : 'none';
+    if (tabSettings) tabSettings.style.display = tabName === 'settings' ? 'block' : 'none';
 
     if (tabName === 'events') renderEventsGrid();
     if (tabName === 'registrations') renderRegistrationsTable();
+    if (tabName === 'champions') renderChampionsGrid();
   }
 
   // ===================================================
@@ -400,6 +485,99 @@
     }).join('');
   }
 
+  // Dynamic Custom Questions Builder Helpers
+  function clearCustomQuestionsList() {
+    if (customQuestionsList) customQuestionsList.innerHTML = '';
+    if (noCustomQuestionsMsg) noCustomQuestionsMsg.style.display = 'block';
+  }
+
+  function addCustomQuestionRow(data = {}) {
+    if (!customQuestionsList) return;
+    if (noCustomQuestionsMsg) noCustomQuestionsMsg.style.display = 'none';
+
+    const qid = data.id || ('cq_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+    const prompt = data.prompt || '';
+    const isRequired = !!data.required;
+
+    const row = document.createElement('div');
+    row.className = 'custom-q-row';
+    row.dataset.qid = qid;
+
+    row.innerHTML = `
+      <span class="custom-q-index">Q:</span>
+      <input type="text" class="custom-q-prompt" placeholder="e.g. GitHub Profile URL, Team Name, Prior Experience..." value="${escapeHTML(prompt)}" required>
+      <label class="custom-q-toggle" title="Toggle Required / Optional for attendees">
+        <input type="checkbox" class="custom-q-req-checkbox" ${isRequired ? 'checked' : ''}>
+        <span class="custom-q-req-text ${isRequired ? 'is-required' : 'is-optional'}">${isRequired ? 'Required *' : 'Optional'}</span>
+      </label>
+      <button type="button" class="custom-q-del-btn" title="Remove question">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    `;
+
+    // Event: Toggle Required Label
+    const checkbox = row.querySelector('.custom-q-req-checkbox');
+    const labelSpan = row.querySelector('.custom-q-req-text');
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        labelSpan.textContent = 'Required *';
+        labelSpan.className = 'custom-q-req-text is-required';
+      } else {
+        labelSpan.textContent = 'Optional';
+        labelSpan.className = 'custom-q-req-text is-optional';
+      }
+    });
+
+    // Event: Delete Row
+    const delBtn = row.querySelector('.custom-q-del-btn');
+    delBtn.addEventListener('click', () => {
+      row.remove();
+      updateCustomQuestionIndices();
+    });
+
+    customQuestionsList.appendChild(row);
+    updateCustomQuestionIndices();
+
+    const input = row.querySelector('.custom-q-prompt');
+    if (!prompt && input) input.focus();
+  }
+
+  function updateCustomQuestionIndices() {
+    if (!customQuestionsList) return;
+    const rows = customQuestionsList.querySelectorAll('.custom-q-row');
+    if (rows.length === 0) {
+      if (noCustomQuestionsMsg) noCustomQuestionsMsg.style.display = 'block';
+    } else {
+      if (noCustomQuestionsMsg) noCustomQuestionsMsg.style.display = 'none';
+      rows.forEach((r, idx) => {
+        const idxSpan = r.querySelector('.custom-q-index');
+        if (idxSpan) idxSpan.textContent = `Q${idx + 1}:`;
+      });
+    }
+  }
+
+  function getCustomQuestionsFromForm() {
+    if (!customQuestionsList) return [];
+    const rows = customQuestionsList.querySelectorAll('.custom-q-row');
+    const list = [];
+    rows.forEach((r, idx) => {
+      const promptInput = r.querySelector('.custom-q-prompt');
+      const reqCheckbox = r.querySelector('.custom-q-req-checkbox');
+      const prompt = promptInput ? promptInput.value.trim() : '';
+      if (prompt) {
+        list.push({
+          id: r.dataset.qid || ('cq_' + idx),
+          prompt: prompt,
+          required: reqCheckbox ? reqCheckbox.checked : false
+        });
+      }
+    });
+    return list;
+  }
+
   function openNewEventModal() {
     eventEditorForm.reset();
     editEventId.value = '';
@@ -411,6 +589,16 @@
     formEventCategory.value = 'Workshop';
     if (formEventRegType) formEventRegType.value = 'native';
     if (externalRegUrlGroup) externalRegUrlGroup.style.display = 'none';
+    if (nativeFieldsConfigGroup) nativeFieldsConfigGroup.style.display = 'block';
+
+    if (fieldReqPhone) fieldReqPhone.checked = true;
+    if (fieldReqBranch) fieldReqBranch.checked = true;
+    if (fieldReqYear) fieldReqYear.checked = true;
+    if (fieldReqRoll) fieldReqRoll.checked = true;
+    if (fieldReqQuery) fieldReqQuery.checked = true;
+
+    clearCustomQuestionsList();
+
     if (formEventExternalUrl) {
       formEventExternalUrl.value = '';
       formEventExternalUrl.required = false;
@@ -442,6 +630,23 @@
     const isExt = ev.registrationType === 'external';
     if (formEventRegType) formEventRegType.value = isExt ? 'external' : 'native';
     if (externalRegUrlGroup) externalRegUrlGroup.style.display = isExt ? 'block' : 'none';
+    if (nativeFieldsConfigGroup) nativeFieldsConfigGroup.style.display = isExt ? 'none' : 'block';
+
+    const rf = ev.registrationFields || { phone: true, branch: true, year: true, rollNumber: true, query: true };
+    if (fieldReqPhone) fieldReqPhone.checked = rf.phone !== false;
+    if (fieldReqBranch) fieldReqBranch.checked = rf.branch !== false;
+    if (fieldReqYear) fieldReqYear.checked = rf.year !== false;
+    if (fieldReqRoll) fieldReqRoll.checked = rf.rollNumber !== false;
+    if (fieldReqQuery) fieldReqQuery.checked = rf.query !== false;
+
+    // Load custom questions
+    clearCustomQuestionsList();
+    if (Array.isArray(rf.customQuestions) && rf.customQuestions.length > 0) {
+      rf.customQuestions.forEach(q => addCustomQuestionRow(q));
+    } else if (rf.custom && rf.customLabel) {
+      addCustomQuestionRow({ id: 'cq_legacy', prompt: rf.customLabel, required: false });
+    }
+
     if (formEventExternalUrl) {
       formEventExternalUrl.value = ev.externalRegistrationUrl || '';
       formEventExternalUrl.required = isExt;
@@ -508,6 +713,8 @@
 
     if (hasError) return;
 
+    const customQuestions = isExternalReg ? [] : getCustomQuestionsFromForm();
+
     const eventData = {
       id: id || undefined,
       title: formEventTitle.value.trim(),
@@ -523,6 +730,16 @@
       feedbackUrl: formEventFeedback.value.trim(),
       registrationType: isExternalReg ? 'external' : 'native',
       externalRegistrationUrl: isExternalReg ? formEventExternalUrl.value.trim() : '',
+      registrationFields: isExternalReg ? null : {
+        phone: fieldReqPhone ? fieldReqPhone.checked : true,
+        branch: fieldReqBranch ? fieldReqBranch.checked : true,
+        year: fieldReqYear ? fieldReqYear.checked : true,
+        rollNumber: fieldReqRoll ? fieldReqRoll.checked : true,
+        query: fieldReqQuery ? fieldReqQuery.checked : true,
+        customQuestions: customQuestions,
+        custom: customQuestions.length > 0,
+        customLabel: customQuestions.length > 0 ? customQuestions[0].prompt : ''
+      },
       registrationOpen: formEventStatus.value === 'open'
     };
 
@@ -624,12 +841,28 @@
         month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
       }) : '—';
 
+      let customBadges = '';
+      if (Array.isArray(r.customResponses) && r.customResponses.length > 0) {
+        customBadges = r.customResponses.map(cr => `
+          <div class="student-meta" style="color: #93c5fd; font-size: 11px; margin-top: 2px;" title="${escapeHTML(cr.prompt)}: ${escapeHTML(cr.answer)}">
+            <span style="color: var(--text-dim);">${escapeHTML(cr.prompt)}:</span> <strong>${escapeHTML(cr.answer || '—')}</strong>
+          </div>
+        `).join('');
+      } else if (r.customQuestion && r.customAnswer) {
+        customBadges = `
+          <div class="student-meta" style="color: #93c5fd; font-size: 11px; margin-top: 2px;">
+            <span style="color: var(--text-dim);">${escapeHTML(r.customQuestion)}:</span> <strong>${escapeHTML(r.customAnswer)}</strong>
+          </div>
+        `;
+      }
+
       return `
         <tr>
           <td><span class="table-reg-id">${escapeHTML(r.id || '—')}</span></td>
           <td>
             <strong>${escapeHTML(r.fullName)}</strong>
             ${r.query ? `<div class="student-meta" style="color: var(--orange-light);" title="${escapeHTML(r.query)}">Note: "${escapeHTML(r.query)}"</div>` : ''}
+            ${customBadges}
           </td>
           <td>
             <div><a href="mailto:${escapeHTML(r.email)}" style="color: var(--blue-light); text-decoration: none;">${escapeHTML(r.email)}</a></div>
@@ -721,13 +954,226 @@
     const totalEvents = cachedEvents.length;
     const openEvents = cachedEvents.filter(e => e.status === 'open').length;
     const totalRegs = cachedRegistrations.length;
+    const totalChamps = cachedChampions.length;
 
-    statTotalEvents.textContent = totalEvents;
-    statOpenEvents.textContent = openEvents;
-    statTotalRegistrations.textContent = totalRegs;
+    if (statTotalEvents) statTotalEvents.textContent = totalEvents;
+    if (statOpenEvents) statOpenEvents.textContent = openEvents;
+    if (statTotalRegistrations) statTotalRegistrations.textContent = totalRegs;
+    if (statTotalChampions) statTotalChampions.textContent = totalChamps;
 
-    badgeEventsCount.textContent = totalEvents;
-    badgeRegsCount.textContent = totalRegs;
+    if (badgeEventsCount) badgeEventsCount.textContent = totalEvents;
+    if (badgeRegsCount) badgeRegsCount.textContent = totalRegs;
+    if (badgeChampionsCount) badgeChampionsCount.textContent = totalChamps;
+  }
+
+  // ===================================================
+  // HALL OF FAME / CHAMPIONS LOGIC
+  // ===================================================
+  async function loadChampions() {
+    try {
+      cachedChampions = await service.getChampions();
+      renderChampionsGrid();
+      updateStats();
+    } catch (err) {
+      console.warn('Failed to load champions:', err);
+    }
+  }
+
+  function renderChampionsGrid() {
+    if (!adminChampionsGrid) return;
+    const search = (champSearchInput && champSearchInput.value || '').trim().toLowerCase();
+    const filtered = cachedChampions.filter(c => {
+      if (!search) return true;
+      return (c.title && c.title.toLowerCase().includes(search)) ||
+             (c.badge && c.badge.toLowerCase().includes(search)) ||
+             (c.desc && c.desc.toLowerCase().includes(search)) ||
+             (c.subtitle && c.subtitle.toLowerCase().includes(search));
+    });
+
+    if (filtered.length === 0) {
+      adminChampionsGrid.innerHTML = `
+        <div class="empty-state" style="grid-column: 1 / -1;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="8" r="7"></circle>
+            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+          </svg>
+          <h4>No Champions Found</h4>
+          <p>No Hall of Fame entries match your search criteria.</p>
+        </div>
+      `;
+      return;
+    }
+
+    adminChampionsGrid.innerHTML = filtered.map(ch => {
+      const img = ch.imageUrl || 'assets/spotlight/winner-1.jpg';
+      return `
+        <div class="admin-champ-card" data-champ-id="${ch.id}">
+          <div class="admin-champ-img-wrap">
+            <span class="admin-champ-badge-overlay">${escapeHTML(ch.badge || '🏆 WINNER')}</span>
+            <img src="${escapeHTML(img)}" alt="${escapeHTML(ch.title)}" onerror="this.src='assets/spotlight/winner-1.jpg'">
+          </div>
+          <div class="admin-champ-content">
+            <h3>${escapeHTML(ch.title)}</h3>
+            ${ch.subtitle ? `<div style="font-size: 12px; color: var(--orange-light); margin-bottom: 6px;">${escapeHTML(ch.subtitle)}</div>` : ''}
+            <p>${escapeHTML(ch.desc || 'No description provided.')}</p>
+
+            <div class="admin-champ-footer">
+              <span class="admin-champ-likes">❤️ ${ch.likes || 0} likes</span>
+              <div class="card-action-btns">
+                <button class="btn-icon" title="Edit Champion" onclick="AwsAdminApp.openEditChampionModal('${ch.id}')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                  </svg>
+                </button>
+                <button class="btn-icon delete" title="Delete Winner" onclick="AwsAdminApp.confirmDeleteChampion('${ch.id}')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function openNewChampionModal() {
+    championEditorForm.reset();
+    editChampionId.value = '';
+    modalChampionTitle.textContent = 'Add Winner to Hall of Fame';
+    saveChampionBtnText.textContent = 'Save Winner';
+    formChampBadge.value = '🏆 1st PLACE';
+    champImgPreviewContainer.style.display = 'none';
+    champImgPreview.src = '';
+    championModalOverlay.classList.add('open');
+  }
+
+  function openEditChampionModal(champId) {
+    const ch = cachedChampions.find(c => c.id === champId);
+    if (!ch) return;
+
+    editChampionId.value = ch.id;
+    modalChampionTitle.textContent = 'Edit Winner: ' + ch.title;
+    saveChampionBtnText.textContent = 'Save Changes';
+
+    formChampTitle.value = ch.title || '';
+    formChampBadge.value = ch.badge || '🏆 1st PLACE';
+    formChampEvent.value = ch.event || '';
+    formChampSubtitle.value = ch.subtitle || '';
+    formChampDesc.value = ch.desc || '';
+    formChampImageUrl.value = ch.imageUrl || '';
+
+    if (ch.imageUrl) {
+      champImgPreview.src = ch.imageUrl;
+      champImgPreviewContainer.style.display = 'block';
+    } else {
+      champImgPreviewContainer.style.display = 'none';
+    }
+
+    championModalOverlay.classList.add('open');
+  }
+
+  function closeChampionModal() {
+    championModalOverlay.classList.remove('open');
+  }
+
+  function handleChampionFileUpload(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, JPEG, WEBP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const img = new Image();
+      img.onload = () => {
+        // Optimize using canvas to max 1000px
+        const maxDim = 1000;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        formChampImageUrl.value = compressedDataUrl;
+        champImgPreview.src = compressedDataUrl;
+        champImgPreviewContainer.style.display = 'block';
+        showToast('Winner photo uploaded & optimized!', 'success');
+      };
+      img.src = uploadEvent.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleChampionFormSubmit(e) {
+    e.preventDefault();
+    const id = editChampionId.value.trim();
+    const title = formChampTitle.value.trim();
+    const badge = formChampBadge.value.trim();
+    const imageUrl = formChampImageUrl.value.trim();
+
+    if (!title) {
+      alert('Winner title/name is required.');
+      return;
+    }
+    if (!imageUrl) {
+      alert('Please upload an image or provide an image URL for the winner.');
+      return;
+    }
+
+    const champData = {
+      id: id || undefined,
+      title,
+      badge: badge || '🏆 WINNER',
+      event: formChampEvent.value.trim(),
+      subtitle: formChampSubtitle.value.trim(),
+      desc: formChampDesc.value.trim(),
+      imageUrl
+    };
+
+    try {
+      await service.saveChampion(champData);
+      closeChampionModal();
+      showToast(id ? 'Winner updated successfully!' : 'Winner added to Hall of Fame live!');
+      await loadChampions();
+    } catch (err) {
+      alert('Error saving winner: ' + err.message);
+    }
+  }
+
+  async function confirmDeleteChampion(champId) {
+    const ch = cachedChampions.find(c => c.id === champId);
+    if (!ch) return;
+
+    if (confirm(`Are you sure you want to remove "${ch.title}" from the Hall of Fame?`)) {
+      try {
+        await service.deleteChampion(champId);
+        showToast('Winner removed from Hall of Fame.');
+        await loadChampions();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
   }
 
   // ===================================================
@@ -791,13 +1237,8 @@
       }
     }
 
-    if (newPass.length < 8) {
-      alert('New password must be at least 8 characters long.');
-      return;
-    }
-
-    if (!/\d/.test(newPass)) {
-      alert('New password must include at least one number.');
+    if (newPass.length < 6) {
+      alert('New password must be at least 6 characters long.');
       return;
     }
 
@@ -834,6 +1275,10 @@
     adminLoginForm.addEventListener('submit', handleLogin);
     logoutBtn.addEventListener('click', handleLogout);
 
+    if (resetDefaultCredsBtn) {
+      resetDefaultCredsBtn.addEventListener('click', handleResetToDefault);
+    }
+
     adminTabs.forEach(tab => {
       tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
@@ -847,10 +1292,14 @@
     closeEventModalBtn.addEventListener('click', closeEventModal);
     cancelEventModalBtn.addEventListener('click', closeEventModal);
     eventEditorForm.addEventListener('submit', handleEventFormSubmit);
+
     if (formEventRegType && externalRegUrlGroup) {
       formEventRegType.addEventListener('change', () => {
         const isExt = formEventRegType.value === 'external';
         externalRegUrlGroup.style.display = isExt ? 'block' : 'none';
+        if (nativeFieldsConfigGroup) {
+          nativeFieldsConfigGroup.style.display = isExt ? 'none' : 'block';
+        }
         if (formEventExternalUrl) {
           formEventExternalUrl.required = isExt;
           if (!isExt && window.AwsValidation) {
@@ -859,6 +1308,13 @@
         }
       });
     }
+
+    if (addCustomQuestionBtn) {
+      addCustomQuestionBtn.addEventListener('click', () => {
+        addCustomQuestionRow();
+      });
+    }
+
     eventModalOverlay.addEventListener('click', (e) => {
       if (e.target === eventModalOverlay) closeEventModal();
     });
@@ -868,6 +1324,30 @@
     regSearchInput.addEventListener('input', renderRegistrationsTable);
     exportCsvBtn.addEventListener('click', handleExportCsv);
     copyEmailsBtn.addEventListener('click', handleCopyEmails);
+
+    // Champions handlers
+    if (openNewChampionModalBtn) openNewChampionModalBtn.addEventListener('click', openNewChampionModal);
+    if (closeChampionModalBtn) closeChampionModalBtn.addEventListener('click', closeChampionModal);
+    if (cancelChampionModalBtn) cancelChampionModalBtn.addEventListener('click', closeChampionModal);
+    if (championEditorForm) championEditorForm.addEventListener('submit', handleChampionFormSubmit);
+    if (champSearchInput) champSearchInput.addEventListener('input', renderChampionsGrid);
+    if (formChampFile) formChampFile.addEventListener('change', handleChampionFileUpload);
+    if (formChampImageUrl) {
+      formChampImageUrl.addEventListener('input', () => {
+        const url = formChampImageUrl.value.trim();
+        if (url) {
+          champImgPreview.src = url;
+          champImgPreviewContainer.style.display = 'block';
+        } else {
+          champImgPreviewContainer.style.display = 'none';
+        }
+      });
+    }
+    if (championModalOverlay) {
+      championModalOverlay.addEventListener('click', (e) => {
+        if (e.target === championModalOverlay) closeChampionModal();
+      });
+    }
 
     // Settings handlers
     saveFirebaseConfigBtn.addEventListener('click', handleSaveFirebaseConfig);
@@ -881,7 +1361,9 @@
     toggleReg,
     openEditModal,
     confirmDeleteEvent,
-    confirmDeleteRegistration
+    confirmDeleteRegistration,
+    openEditChampionModal,
+    confirmDeleteChampion
   };
 
   // Run on DOM load

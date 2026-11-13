@@ -51,7 +51,7 @@
 }
 
 .reg-modal-header {
-  padding: 24px 28px 18px;
+  padding: 24px 64px 18px 28px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
   background: linear-gradient(180deg, rgba(255, 153, 0, 0.06) 0%, transparent 100%);
@@ -61,25 +61,29 @@
   position: absolute;
   top: 20px;
   right: 20px;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #8ea0b3;
-  font-size: 20px;
+  font-size: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
   line-height: 1;
+  z-index: 100;
+  pointer-events: auto !important;
+  user-select: none;
 }
 
 .reg-modal-close:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 153, 0, 0.5);
+  transform: scale(1.05);
 }
 
 .reg-modal-kicker {

@@ -200,11 +200,10 @@
     if (document.getElementById('nativeRegModal')) return;
 
     const modalMarkup = `
-      <div class="reg-modal-backdrop" id="nativeRegModal" role="dialog" aria-modal="true">
+      <div class="reg-modal-backdrop" id="nativeRegModal" role="dialog" aria-modal="true" style="display: none;">
         <div class="reg-modal-content">
-          <button class="reg-modal-close" id="closeRegModalBtn" aria-label="Close modal">&times;</button>
-          
           <div class="reg-modal-header">
+            <button type="button" class="reg-modal-close" id="closeRegModalBtn" aria-label="Close modal">&times;</button>
             <div class="reg-modal-kicker">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -236,20 +235,20 @@
                 <input type="text" id="regFullName" class="reg-input" placeholder="e.g. Rahul Sharma" required>
               </div>
 
-              <div class="reg-form-row">
-                <div class="reg-form-group">
+              <div class="reg-form-row" id="regEmailPhoneRow">
+                <div class="reg-form-group" id="regEmailGroup">
                   <label for="regEmail">College Email <span class="req">*</span></label>
                   <input type="email" id="regEmail" class="reg-input" placeholder="name@skit.ac.in" required>
                 </div>
 
-                <div class="reg-form-group">
+                <div class="reg-form-group" id="regPhoneGroup">
                   <label for="regPhone">WhatsApp / Mobile <span class="req">*</span></label>
                   <input type="tel" id="regPhone" class="reg-input" placeholder="9876543210" pattern="[0-9]{10}" maxlength="10" title="Please enter a valid 10-digit mobile number" required>
                 </div>
               </div>
 
-              <div class="reg-form-row">
-                <div class="reg-form-group">
+              <div class="reg-form-row" id="regBranchYearRow">
+                <div class="reg-form-group" id="regBranchGroup">
                   <label for="regBranch">Branch / Department <span class="req">*</span></label>
                   <select id="regBranch" class="reg-input" required>
                     <option value="Computer Science & Engineering (CSE)">CSE</option>
@@ -265,7 +264,7 @@
                   </select>
                 </div>
 
-                <div class="reg-form-group">
+                <div class="reg-form-group" id="regYearGroup">
                   <label for="regYear">Year of Study <span class="req">*</span></label>
                   <select id="regYear" class="reg-input" required>
                     <option value="1st Year">1st Year</option>
@@ -276,12 +275,15 @@
                 </div>
               </div>
 
-              <div class="reg-form-group">
+              <div class="reg-form-group" id="regRollGroup">
                 <label for="regRollNumber">College / RTU Roll No. <span class="req">*</span></label>
                 <input type="text" id="regRollNumber" class="reg-input" placeholder="e.g. 23ESKCS123" required>
               </div>
 
-              <div class="reg-form-group">
+              <!-- Dynamic Custom Questions Container -->
+              <div id="regDynamicCustomContainer"></div>
+
+              <div class="reg-form-group" id="regQueryGroup">
                 <label for="regQuery">Any question or expectation from this session? (Optional)</label>
                 <textarea id="regQuery" class="reg-input" placeholder="e.g. Want to learn how to deploy serverless architectures"></textarea>
               </div>
@@ -321,9 +323,43 @@
 
   function bindModalEvents() {
     const modal = document.getElementById('nativeRegModal');
+    if (!modal) return;
     const closeBtn = document.getElementById('closeRegModalBtn');
     const form = document.getElementById('nativeRegistrationForm');
     const doneBtn = document.getElementById('doneModalBtn');
+
+    if (closeBtn) {
+      closeBtn.onclick = function (e) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        closeRegistrationModal();
+      };
+    }
+
+    if (doneBtn) {
+      doneBtn.onclick = function (e) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        closeRegistrationModal();
+      };
+    }
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal || e.target.closest('#closeRegModalBtn') || e.target.closest('#doneModalBtn')) {
+        e.preventDefault();
+        closeRegistrationModal();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('open')) {
+        closeRegistrationModal();
+      }
+    });
 
     const nameInput = document.getElementById('regFullName');
     const emailInput = document.getElementById('regEmail');
@@ -436,7 +472,87 @@
     form.style.display = 'block';
     successCard.style.display = 'none';
 
-    modal.classList.add('open');
+    // Configure dynamic fields for this event
+    const fields = event.registrationFields || {
+      phone: true,
+      branch: true,
+      year: true,
+      rollNumber: true,
+      query: true,
+      custom: false
+    };
+
+    const phoneGroup = document.getElementById('regPhoneGroup');
+    const phoneInput = document.getElementById('regPhone');
+    if (phoneGroup && phoneInput) {
+      phoneGroup.style.display = fields.phone !== false ? 'block' : 'none';
+      phoneInput.required = fields.phone !== false;
+      if (window.AwsValidation) window.AwsValidation.resetField(phoneInput);
+    }
+
+    const branchGroup = document.getElementById('regBranchGroup');
+    const branchInput = document.getElementById('regBranch');
+    if (branchGroup && branchInput) {
+      branchGroup.style.display = fields.branch !== false ? 'block' : 'none';
+      branchInput.required = fields.branch !== false;
+    }
+
+    const yearGroup = document.getElementById('regYearGroup');
+    const yearInput = document.getElementById('regYear');
+    if (yearGroup && yearInput) {
+      yearGroup.style.display = fields.year !== false ? 'block' : 'none';
+      yearInput.required = fields.year !== false;
+    }
+
+    const branchYearRow = document.getElementById('regBranchYearRow');
+    if (branchYearRow) {
+      branchYearRow.style.display = (fields.branch !== false || fields.year !== false) ? 'grid' : 'none';
+    }
+
+    const rollGroup = document.getElementById('regRollGroup');
+    const rollInput = document.getElementById('regRollNumber');
+    if (rollGroup && rollInput) {
+      rollGroup.style.display = fields.rollNumber !== false ? 'block' : 'none';
+      rollInput.required = fields.rollNumber !== false;
+      if (window.AwsValidation) window.AwsValidation.resetField(rollInput);
+    }
+
+    const queryGroup = document.getElementById('regQueryGroup');
+    if (queryGroup) {
+      queryGroup.style.display = fields.query !== false ? 'block' : 'none';
+    }
+
+    // Dynamic Custom Questions Rendering
+    const customContainer = document.getElementById('regDynamicCustomContainer');
+    if (customContainer) {
+      customContainer.innerHTML = '';
+      let cQuestions = [];
+      if (Array.isArray(fields.customQuestions) && fields.customQuestions.length > 0) {
+        cQuestions = fields.customQuestions;
+      } else if (fields.custom && fields.customLabel) {
+        cQuestions = [{ id: 'q_legacy', prompt: fields.customLabel, required: false }];
+      }
+
+      if (cQuestions.length > 0) {
+        customContainer.innerHTML = cQuestions.map((q, idx) => {
+          const inputId = `regCustomInput_${idx}`;
+          const isReq = !!q.required;
+          return `
+            <div class="reg-form-group custom-question-group" data-qid="${escapeHTML(q.id || ('q_' + idx))}" data-prompt="${escapeHTML(q.prompt)}">
+              <label for="${inputId}">
+                ${escapeHTML(q.prompt)} ${isReq ? '<span class="req">*</span>' : '<span style="font-size: 11px; color: #8ea0b3; font-weight: normal; margin-left: 4px;">(Optional)</span>'}
+              </label>
+              <input type="text" id="${inputId}" class="reg-input custom-q-answer" placeholder="Your answer${isReq ? ' (required)' : '...'}" ${isReq ? 'required' : ''}>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+      modal.classList.add('open');
+    });
     document.body.style.overflow = 'hidden';
   }
 
@@ -445,6 +561,11 @@
     if (modal) {
       modal.classList.remove('open');
       document.body.style.overflow = '';
+      setTimeout(() => {
+        if (!modal.classList.contains('open')) {
+          modal.style.display = 'none';
+        }
+      }, 300);
     }
   }
 
@@ -488,23 +609,67 @@
         window.AwsValidation.clearFieldError(emailInput);
       }
 
-      const phoneVal = window.AwsValidation.validatePhone(phoneInput.value);
-      if (!phoneVal.valid) {
-        window.AwsValidation.showFieldError(phoneInput, phoneVal.message);
-        hasError = true;
-        if (!firstErrorField) firstErrorField = phoneInput;
+      const fields = activeEvent.registrationFields || { phone: true, branch: true, year: true, rollNumber: true, query: true, custom: false };
+
+      if (fields.phone !== false) {
+        const phoneVal = window.AwsValidation.validatePhone(phoneInput.value);
+        if (!phoneVal.valid) {
+          window.AwsValidation.showFieldError(phoneInput, phoneVal.message);
+          hasError = true;
+          if (!firstErrorField) firstErrorField = phoneInput;
+        } else {
+          window.AwsValidation.clearFieldError(phoneInput);
+        }
       } else {
         window.AwsValidation.clearFieldError(phoneInput);
       }
 
-      const rollVal = window.AwsValidation.validateRollNumber(rollInput.value);
-      if (!rollVal.valid) {
-        window.AwsValidation.showFieldError(rollInput, rollVal.message);
-        hasError = true;
-        if (!firstErrorField) firstErrorField = rollInput;
+      if (fields.rollNumber !== false) {
+        const rollVal = window.AwsValidation.validateRollNumber(rollInput.value);
+        if (!rollVal.valid) {
+          window.AwsValidation.showFieldError(rollInput, rollVal.message);
+          hasError = true;
+          if (!firstErrorField) firstErrorField = rollInput;
+        } else {
+          window.AwsValidation.clearFieldError(rollInput);
+        }
       } else {
         window.AwsValidation.clearFieldError(rollInput);
       }
+    }
+
+    // Custom Questions Validation & Collection
+    const customQuestionGroups = document.querySelectorAll('#regDynamicCustomContainer .custom-question-group');
+    const customResponses = [];
+    let missingCustom = false;
+
+    customQuestionGroups.forEach(grp => {
+      const prompt = grp.dataset.prompt || '';
+      const input = grp.querySelector('.custom-q-answer');
+      const answer = input ? input.value.trim() : '';
+      const isReq = input ? input.hasAttribute('required') : false;
+
+      if (isReq && !answer) {
+        missingCustom = true;
+        if (input) {
+          input.style.borderColor = '#ef4444';
+          if (!firstErrorField) firstErrorField = input;
+        }
+      } else if (input) {
+        input.style.borderColor = '';
+      }
+
+      customResponses.push({
+        prompt: prompt,
+        answer: answer,
+        required: isReq
+      });
+    });
+
+    if (missingCustom) {
+      hasError = true;
+      errorBox.textContent = 'Please fill out all required custom questions.';
+      errorBox.style.display = 'block';
     }
 
     if (hasError) {
@@ -516,15 +681,19 @@
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>Verifying &amp; Reserving Seat...</span>';
 
+    const fieldsConfig = activeEvent.registrationFields || {};
     const regData = {
       eventId: activeEvent.id,
       fullName: nameInput.value.trim(),
       email: emailInput.value.trim(),
-      phone: phoneInput.value.trim(),
-      branch: document.getElementById('regBranch').value,
-      year: document.getElementById('regYear').value,
-      rollNumber: rollInput.value.trim(),
-      query: document.getElementById('regQuery').value.trim()
+      phone: fieldsConfig.phone !== false ? phoneInput.value.trim() : '',
+      branch: fieldsConfig.branch !== false ? document.getElementById('regBranch').value : 'CSE',
+      year: fieldsConfig.year !== false ? document.getElementById('regYear').value : '1st Year',
+      rollNumber: fieldsConfig.rollNumber !== false ? rollInput.value.trim() : '',
+      query: fieldsConfig.query !== false ? document.getElementById('regQuery').value.trim() : '',
+      customResponses: customResponses,
+      customQuestion: customResponses.length > 0 ? customResponses[0].prompt : '',
+      customAnswer: customResponses.length > 0 ? customResponses[0].answer : ''
     };
 
     try {

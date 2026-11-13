@@ -80,15 +80,17 @@ function validateRegistration(data) {
   }
   sanitized.email = email;
 
-  // 3. Mobile / WhatsApp Number (Strict 10-digit Indian Mobile)
-  const phone = (data.phone || '').trim().replace(/[\s\-\+]/g, '');
-  const cleanPhone = phone.startsWith('91') && phone.length === 12 ? phone.substring(2) : phone;
-  if (!cleanPhone) {
-    errors.push('Mobile / WhatsApp Number is required.');
-  } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-    errors.push('Mobile number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.');
+  // 3. Mobile / WhatsApp Number (When provided)
+  if (data.phone) {
+    const phone = (data.phone || '').trim().replace(/[\s\-\+]/g, '');
+    const cleanPhone = phone.startsWith('91') && phone.length === 12 ? phone.substring(2) : phone;
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      errors.push('Mobile number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.');
+    }
+    sanitized.phone = cleanPhone;
+  } else {
+    sanitized.phone = '';
   }
-  sanitized.phone = cleanPhone;
 
   // 4. Branch / Department
   const allowedBranches = [
@@ -103,32 +105,38 @@ function validateRegistration(data) {
     'Civil Engineering (CE)',
     'CSE', 'IT', 'CS-AI', 'CS-DS', 'CS-IoT', 'ECE', 'EE', 'ME', 'Civil', 'Other'
   ];
-  const branch = sanitizeString(data.branch, 80);
-  if (!branch) {
-    errors.push('Branch / Department is required.');
-  } else if (!allowedBranches.some(b => b.toLowerCase() === branch.toLowerCase())) {
-    errors.push('Invalid Branch selection.');
+  if (data.branch) {
+    const branch = sanitizeString(data.branch, 80);
+    if (!allowedBranches.some(b => b.toLowerCase() === branch.toLowerCase())) {
+      errors.push('Invalid Branch selection.');
+    }
+    sanitized.branch = branch;
+  } else {
+    sanitized.branch = 'CSE';
   }
-  sanitized.branch = branch;
 
   // 5. Year of Study
   const allowedYears = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
-  const year = sanitizeString(data.year, 20);
-  if (!year) {
-    errors.push('Year of study is required.');
-  } else if (!allowedYears.includes(year)) {
-    errors.push('Year must be one of: 1st Year, 2nd Year, 3rd Year, or 4th Year.');
+  if (data.year) {
+    const year = sanitizeString(data.year, 20);
+    if (!allowedYears.includes(year)) {
+      errors.push('Year must be one of: 1st Year, 2nd Year, 3rd Year, or 4th Year.');
+    }
+    sanitized.year = year;
+  } else {
+    sanitized.year = '1st Year';
   }
-  sanitized.year = year;
 
   // 6. Roll Number
-  const rollNumber = (data.rollNumber || '').trim().toUpperCase();
-  if (!rollNumber) {
-    errors.push('College / RTU Roll Number is required.');
-  } else if (!/^[A-Z0-9\/\-]{4,25}$/.test(rollNumber)) {
-    errors.push('Roll Number can only contain alphanumeric characters, hyphens, and slashes (4-25 chars).');
+  if (data.rollNumber) {
+    const rollNumber = (data.rollNumber || '').trim().toUpperCase();
+    if (!/^[A-Z0-9\/\-]{4,25}$/.test(rollNumber)) {
+      errors.push('Roll Number can only contain alphanumeric characters, hyphens, and slashes (4-25 chars).');
+    }
+    sanitized.rollNumber = rollNumber;
+  } else {
+    sanitized.rollNumber = '';
   }
-  sanitized.rollNumber = rollNumber;
 
   // 7. Event ID
   const eventId = sanitizeString(data.eventId, 64);
@@ -138,6 +146,11 @@ function validateRegistration(data) {
   sanitized.eventId = eventId;
 
   // 8. Optional Query / Note
+  sanitized.query = sanitizeString(data.query, 1000);
+
+  // 9. Custom Question & Answer (Optional)
+  sanitized.customQuestion = sanitizeString(data.customQuestion, 200);
+  sanitized.customAnswer = sanitizeString(data.customAnswer, 500);
   const query = sanitizeString(data.query, 500);
   sanitized.query = query;
 
@@ -277,6 +290,7 @@ function validateEvent(data) {
   }
 
   sanitized.registrationOpen = status === 'open';
+  sanitized.registrationFields = data.registrationFields || null;
   if (data.id) sanitized.id = sanitizeString(data.id, 64);
 
   return {
