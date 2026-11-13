@@ -4,6 +4,10 @@
     {
       "source": "/favicon.ico",
       "destination": "/favicons/favicon.ico"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
     }
   ],
   "headers": [
