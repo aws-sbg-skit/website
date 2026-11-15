@@ -76,7 +76,6 @@
   const currentPasswordInput = document.getElementById('currentPasswordInput');
   const newUsernameInput = document.getElementById('newUsernameInput');
   const newPasswordInput = document.getElementById('newPasswordInput');
-  const resetDefaultCredsBtn = document.getElementById('resetDefaultCredsBtn');
 
   // DOM Elements - Event Modal
   const eventModalOverlay = document.getElementById('eventModalOverlay');
@@ -329,24 +328,6 @@
     if (adminLoginForm) adminLoginForm.reset();
     showLogin();
     showToast('Signed out of admin portal.', 'success');
-  }
-
-  async function handleResetToDefault() {
-    if (confirm('Are you sure you want to reset admin credentials back to default?\n\nUsername: admin\nPassword: password123')) {
-      try {
-        const res = await service.resetAdminCredentials();
-        showToast(res.message, 'success');
-        if (adminUsernameInput) adminUsernameInput.value = 'admin';
-        if (adminPasswordInput) {
-          adminPasswordInput.value = '';
-          adminPasswordInput.focus();
-        }
-        if (navUsername) navUsername.textContent = 'admin';
-        if (navUserInitial) navUserInitial.textContent = 'A';
-      } catch (err) {
-        alert('Error resetting credentials: ' + err.message);
-      }
-    }
   }
 
   // ===================================================
@@ -2573,10 +2554,6 @@
     setupPasswordToggle('togglePasswordBtn', 'adminPassword');
     setupPasswordToggle('toggleCurPasswordBtn', 'currentPasswordInput');
     setupPasswordToggle('toggleNewPasswordBtn', 'newPasswordInput');
-
-    if (resetDefaultCredsBtn) {
-      resetDefaultCredsBtn.addEventListener('click', handleResetToDefault);
-    }
 
     adminTabs.forEach(tab => {
       tab.addEventListener('click', () => switchTab(tab.dataset.tab));

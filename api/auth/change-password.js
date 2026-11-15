@@ -6,9 +6,7 @@
 const crypto = require('crypto');
 const { createSessionToken } = require('../utils/validation');
 
-const ADMIN_USER = (process.env.ADMIN_USER || 'admin').toLowerCase();
-const DEFAULT_HASH = 'c8b0d8a4a585323c7e2c9d7624779327548d6a033a9ee9e427d3faad84e40df6';
-const ADMIN_HASH = process.env.ADMIN_PASSWORD_HASH || DEFAULT_HASH;
+const FIRESTORE_AUTH_URL = 'https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,12 +34,12 @@ module.exports = async (req, res) => {
       return res.status(400).json({ success: false, error: 'New password must be at least 6 characters long.' });
     }
 
-    // 1. Fetch active credentials
-    let targetUser = ADMIN_USER;
-    let targetHash = ADMIN_HASH;
+    // 1. Fetch active credentials solely from Firestore
+    let targetUser = (process.env.ADMIN_USER || 'admin').toLowerCase();
+    let targetHash = process.env.ADMIN_PASSWORD_HASH || null;
 
     try {
-      const fireRes = await fetch('https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth');
+      const fireRes = await fetch(FIRESTORE_AUTH_URL);
       if (fireRes.ok) {
         const fireData = await fireRes.json();
         if (fireData.fields && fireData.fields.hash && fireData.fields.hash.stringValue) {
@@ -49,7 +47,13 @@ module.exports = async (req, res) => {
           targetHash = fireData.fields.hash.stringValue;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Firestore fetch failed:', e);
+    }
+
+    if (!targetHash) {
+      return res.status(503).json({ success: false, error: 'Authentication database unavailable.' });
+    }
 
     // 2. Verify current password
     const curHash = crypto.createHash('sha256').update(`${targetUser}:${currentPassword}`).digest('hex');
@@ -67,26 +71,27 @@ module.exports = async (req, res) => {
     const nowIso = new Date().toISOString();
 
     // 4. Persist to Firestore cloud database
-    try {
-      await fetch('https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: {
-            username: { stringValue: finalUser },
-            hash: { stringValue: newHash },
-            updatedAt: { stringValue: nowIso }
-          }
-        })
-      });
-    } catch (fsErr) {
-      console.warn('Failed to persist to Firestore:', fsErr);
+    const patchRes = await fetch(FIRESTORE_AUTH_URL, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          username: { stringValue: finalUser },
+          hash: { stringValue: newHash },
+          updatedAt: { stringValue: nowIso }
+        }
+      })
+    });
+
+    if (!patchRes.ok) {
+      const errText = await patchRes.text();
+      return res.status(500).json({ success: false, error: 'Failed to update credentials in database: ' + errText });
     }
 
     const token = createSessionToken(finalUser);
     return res.status(200).json({
       success: true,
-      message: 'Admin credentials updated successfully!',
+      message: 'Admin credentials updated successfully in database!',
       username: finalUser,
       hash: newHash,
       token

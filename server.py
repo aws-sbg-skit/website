@@ -66,7 +66,7 @@ class SbgHttpHandler(http.server.SimpleHTTPRequestHandler):
         password = str(payload.get('password') or '')
 
         target_user = "admin"
-        target_hash = "c8b0d8a4a585323c7e2c9d7624779327548d6a033a9ee9e427d3faad84e40df6"
+        target_hash = None
 
         try:
             req = urllib.request.Request("https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth", headers={'User-Agent': 'Mozilla/5.0'})
@@ -80,6 +80,10 @@ class SbgHttpHandler(http.server.SimpleHTTPRequestHandler):
                         target_user = fields['username']['stringValue'].lower()
         except Exception:
             pass
+
+        if not target_hash:
+            self._send_json(503, {"success": False, "errors": ["Authentication database unavailable or credentials not set in database."]})
+            return
 
         input_hash = hashlib.sha256(f"{username}:{password}".encode('utf-8')).hexdigest()
         if username == target_user and input_hash == target_hash:
@@ -94,7 +98,7 @@ class SbgHttpHandler(http.server.SimpleHTTPRequestHandler):
         new_pass = str(payload.get('newPassword') or '').strip()
 
         target_user = "admin"
-        target_hash = "c8b0d8a4a585323c7e2c9d7624779327548d6a033a9ee9e427d3faad84e40df6"
+        target_hash = None
 
         try:
             req = urllib.request.Request("https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth", headers={'User-Agent': 'Mozilla/5.0'})
@@ -108,6 +112,10 @@ class SbgHttpHandler(http.server.SimpleHTTPRequestHandler):
                         target_user = fields['username']['stringValue'].lower()
         except Exception:
             pass
+
+        if not target_hash:
+            self._send_json(503, {"success": False, "error": "Authentication database unavailable."})
+            return
 
         cur_hash = hashlib.sha256(f"{target_user}:{cur_pass}".encode('utf-8')).hexdigest()
         if cur_hash != target_hash:

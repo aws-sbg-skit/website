@@ -123,8 +123,7 @@
 
     clearFieldError(inputEl) {
       if (!inputEl) return;
-      inputEl.classList.remove('is-invalid');
-      inputEl.classList.add('is-valid');
+      inputEl.classList.remove('is-invalid', 'is-valid');
 
       const errorEl = inputEl.parentElement.querySelector('.field-error-msg');
       if (errorEl) {

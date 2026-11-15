@@ -6,11 +6,8 @@
 const crypto = require('crypto');
 const { validateLogin, createSessionToken } = require('../utils/validation');
 
-// Master admin credentials (customizable via env vars)
-const ADMIN_USER = (process.env.ADMIN_USER || 'admin').toLowerCase();
-// Default SHA-256 hash for 'password123'
-const DEFAULT_HASH = 'c8b0d8a4a585323c7e2c9d7624779327548d6a033a9ee9e427d3faad84e40df6';
-const ADMIN_HASH = process.env.ADMIN_PASSWORD_HASH || DEFAULT_HASH;
+// Master admin credentials source: Firestore Database (registrations/sbg_admin_auth)
+const FIRESTORE_AUTH_URL = 'https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,12 +31,12 @@ module.exports = async (req, res) => {
 
     const { username, password } = sanitized;
 
-    // 2. Fetch live updated credentials from Firestore if updated, otherwise fallback to env/default
-    let targetUser = ADMIN_USER;
-    let targetHash = ADMIN_HASH;
+    // 2. Fetch live credentials solely from Firestore database (no hardcoded password fallback)
+    let targetUser = (process.env.ADMIN_USER || 'admin').toLowerCase();
+    let targetHash = process.env.ADMIN_PASSWORD_HASH || null;
 
     try {
-      const fireRes = await fetch('https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth');
+      const fireRes = await fetch(FIRESTORE_AUTH_URL);
       if (fireRes.ok) {
         const fireData = await fireRes.json();
         if (fireData.fields && fireData.fields.hash && fireData.fields.hash.stringValue) {
@@ -47,8 +44,15 @@ module.exports = async (req, res) => {
           targetHash = fireData.fields.hash.stringValue;
         }
       }
-    } catch (e) {
-      // Use fallback
+    } catch (dbErr) {
+      console.warn('Database auth lookup warning:', dbErr);
+    }
+
+    if (!targetHash) {
+      return res.status(503).json({
+        success: false,
+        errors: ['Authentication database unavailable or credentials not set in database.']
+      });
     }
 
     // 3. Compute input password hash (SHA-256)
@@ -62,9 +66,6 @@ module.exports = async (req, res) => {
     const isPassMatch = expectedBuf.length === inputBuf.length && crypto.timingSafeEqual(expectedBuf, inputBuf);
 
     if (isUserMatch && isPassMatch) {
-      // Reset rate limit on successful authentication
-      clearRateLimit(clientIp, 'admin_login');
-
       const token = createSessionToken(username);
       return res.status(200).json({
         success: true,

@@ -9,7 +9,6 @@
   const STORAGE_KEY_EVENTS = 'aws_sbg_events';
   const STORAGE_KEY_REGISTRATIONS = 'aws_sbg_registrations';
   const STORAGE_KEY_CONFIG = 'aws_sbg_firebase_config';
-  const STORAGE_KEY_AUTH = 'aws_sbg_admin_auth';
   const STORAGE_KEY_CHAMPIONS = 'aws_sbg_champions_v1';
   const STORAGE_KEY_CERTIFICATES = 'aws_sbg_certificates_v1';
   const STORAGE_KEY_CERT_CONFIG = 'aws_sbg_cert_config_v1';
@@ -331,12 +330,6 @@
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // Pre-hashed default credentials:
-  // Default username: "admin"
-  // Default password: "password123"
-  // Default hash for "admin:password123":
-  const DEFAULT_AUTH_HASH = 'c8b0d8a4a585323c7e2c9d7624779327548d6a033a9ee9e427d3faad84e40df6';
-
   // Pre-configured Firebase Configuration for AWS SBG SKIT
   const DEFAULT_FIREBASE_CONFIG = {
     apiKey: "AIzaSyB_T38x3NS7VahZSAzmgTcMCXuGjzcQMB8",
@@ -372,13 +365,8 @@
         if (!localStorage.getItem(STORAGE_KEY_CERTIFICATES)) {
           localStorage.setItem(STORAGE_KEY_CERTIFICATES, JSON.stringify([]));
         }
-        if (!localStorage.getItem(STORAGE_KEY_AUTH)) {
-          localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify({
-            username: 'admin',
-            // Default credential: username "admin", password "password123"
-            hash: DEFAULT_AUTH_HASH
-          }));
-        }
+        // Ensure credentials are NEVER stored on device cache / localStorage
+        localStorage.removeItem('aws_sbg_admin_auth');
       } catch (e) {
         console.warn('LocalStorage access restricted:', e);
       }
@@ -461,14 +449,48 @@
             body: JSON.stringify({ username: cleanUser, password })
           });
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.token) {
+          const data = await response.json();
+          if (response.ok && data.success && data.token) {
+            const sessionPayload = JSON.stringify({
+              token: data.token,
+              username: data.username,
+              loggedInAt: new Date().toISOString(),
+              serverVerified: true,
+              remember: !!remember
+            });
+            sessionStorage.setItem(SESSION_AUTH_TOKEN, sessionPayload);
+            if (remember) {
+              localStorage.setItem(SESSION_AUTH_TOKEN, sessionPayload);
+            } else {
+              localStorage.removeItem(SESSION_AUTH_TOKEN);
+            }
+            return { success: true, username: data.username };
+          } else if (response.status === 401 || (data && data.errors)) {
+            return { success: false, message: (data.errors && data.errors[0]) || 'Invalid username or password.' };
+          }
+        } catch (networkErr) {
+          // Fall through to direct Firestore verification only if server is unreachable
+        }
+      }
+
+      // Fallback: Verify strictly from Firestore Cloud Database (0 device cache fallback)
+      const inputHash = await sha256(`${cleanUser}:${password}`);
+
+      try {
+        if (this.isFirebaseReady && this.firestore) {
+          const fireDoc = await this.firestore.collection('registrations').doc('sbg_admin_auth').get();
+          if (fireDoc.exists) {
+            const data = fireDoc.data();
+            const validUser = (data.username || 'admin').toLowerCase();
+            const validHash = data.hash;
+
+            if (cleanUser === validUser && inputHash === validHash) {
+              const token = 'sbg_adm_' + Math.random().toString(36).substring(2) + Date.now();
               const sessionPayload = JSON.stringify({
-                token: data.token,
-                username: data.username,
+                token,
+                username: cleanUser,
                 loggedInAt: new Date().toISOString(),
-                serverVerified: true,
+                serverVerified: false,
                 remember: !!remember
               });
               sessionStorage.setItem(SESSION_AUTH_TOKEN, sessionPayload);
@@ -477,63 +499,11 @@
               } else {
                 localStorage.removeItem(SESSION_AUTH_TOKEN);
               }
-              return { success: true, username: data.username };
+              return { success: true, username: cleanUser };
             }
           }
-          // Note: If response is 401 or not ok, fall through to check custom/updated credentials below
-        } catch (networkErr) {
-          // Fall through to local fallback authentication if offline or static file server
         }
-      }
-
-      // Check stored custom credentials (LocalStorage & Firestore Sync)
-      const inputHash = await sha256(`${cleanUser}:${password}`);
-
-      try {
-        let validUser = 'admin';
-        let validHash = DEFAULT_AUTH_HASH;
-
-        // Sync from Firestore if available (using registrations collection which has read/write permissions)
-        if (this.isFirebaseReady && this.firestore) {
-          try {
-            const fireDoc = await this.firestore.collection('registrations').doc('sbg_admin_auth').get();
-            if (fireDoc.exists) {
-              const data = fireDoc.data();
-              if (data && data.hash) {
-                validUser = (data.username || 'admin').toLowerCase();
-                validHash = data.hash;
-                localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(data));
-              }
-            }
-          } catch (e) {}
-        }
-
-        const authDataStr = localStorage.getItem(STORAGE_KEY_AUTH);
-        if (authDataStr) {
-          const authData = JSON.parse(authDataStr);
-          validUser = (authData.username || validUser).toLowerCase();
-          validHash = authData.hash || validHash;
-        }
-
-        if (cleanUser === validUser && inputHash === validHash) {
-          const token = 'sbg_adm_' + Math.random().toString(36).substring(2) + Date.now();
-          const sessionPayload = JSON.stringify({
-            token,
-            username: cleanUser,
-            loggedInAt: new Date().toISOString(),
-            serverVerified: false,
-            remember: !!remember
-          });
-          sessionStorage.setItem(SESSION_AUTH_TOKEN, sessionPayload);
-          if (remember) {
-            localStorage.setItem(SESSION_AUTH_TOKEN, sessionPayload);
-          } else {
-            localStorage.removeItem(SESSION_AUTH_TOKEN);
-          }
-          return { success: true, username: cleanUser };
-        } else {
-          return { success: false, message: 'Invalid username or password.' };
-        }
+        return { success: false, message: 'Invalid username or password.' };
       } catch (e) {
         return { success: false, message: 'Login error: ' + e.message };
       }
@@ -567,121 +537,85 @@
     }
 
     async changeAdminPassword(currentPassword, newUsername, newPassword) {
-      // 1. Retrieve active stored credentials (freshest from Firestore or localStorage)
-      let activeUser = 'admin';
-      let activeHash = DEFAULT_AUTH_HASH;
-
-      if (this.isFirebaseReady && this.firestore) {
-        try {
-          const fireDoc = await this.firestore.collection('registrations').doc('sbg_admin_auth').get();
-          if (fireDoc.exists) {
-            const data = fireDoc.data();
-            if (data && data.hash) {
-              activeUser = (data.username || 'admin').toLowerCase();
-              activeHash = data.hash;
-              localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(data));
-            }
-          }
-        } catch (e) {}
+      if (!currentPassword) {
+        return { success: false, message: 'Current password is required.' };
       }
-
-      const authDataStr = localStorage.getItem(STORAGE_KEY_AUTH);
-      if (authDataStr) {
-        try {
-          const authData = JSON.parse(authDataStr);
-          activeUser = (authData.username || activeUser).toLowerCase();
-          activeHash = authData.hash || activeHash;
-        } catch (e) {}
-      }
-
-      // 2. Verify current password
-      const inputHash = await sha256(`${activeUser}:${currentPassword}`);
-      if (inputHash !== activeHash) {
-        return { success: false, message: 'Current password is incorrect.' };
-      }
-
-      // 3. Validate new password
       if (!newPassword || newPassword.length < 6) {
         return { success: false, message: 'New password must be at least 6 characters.' };
       }
 
-      const finalUser = (newUsername && newUsername.trim()) ? newUsername.trim().toLowerCase() : activeUser;
-      const newHash = await sha256(`${finalUser}:${newPassword}`);
-
-      const newAuthData = {
-        username: finalUser,
-        hash: newHash,
-        updatedAt: new Date().toISOString()
-      };
-
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(newAuthData));
-
-      // 4. Persist to Firestore cloud database (registrations collection allows read/write)
-      if (this.isFirebaseReady && this.firestore) {
+      // Try server-side API first to update Firestore cloud database
+      if (typeof window !== 'undefined' && window.location && window.location.protocol && window.location.protocol.startsWith('http')) {
         try {
-          await this.firestore.collection('registrations').doc('sbg_admin_auth').set(newAuthData);
-        } catch (e) {
-          console.warn('Failed to sync updated auth to Firestore:', e);
-        }
-      }
-
-      // 5. Notify serverless backend to sync credentials and reset rate-limiting
-      try {
-        if (typeof fetch === 'function') {
-          fetch('/api/auth/change-password', {
+          const response = await fetch('/api/auth/change-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               currentPassword,
-              newUsername: finalUser,
+              newUsername: (newUsername && newUsername.trim()) ? newUsername.trim().toLowerCase() : '',
               newPassword
             })
-          }).catch(() => {});
-        }
-      } catch (e) {}
+          });
 
-      // 6. Update current session
-      try {
-        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN) || localStorage.getItem(SESSION_AUTH_TOKEN);
-        if (session) {
-          const parsed = JSON.parse(session);
-          parsed.username = finalUser;
-          sessionStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify(parsed));
-          if (localStorage.getItem(SESSION_AUTH_TOKEN)) {
-            localStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify(parsed));
+          const data = await response.json();
+          if (response.ok && data.success) {
+            // Ensure no legacy credentials cached on device
+            localStorage.removeItem('aws_sbg_admin_auth');
+
+            // Update session
+            const finalUser = data.username || newUsername || 'admin';
+            const session = sessionStorage.getItem(SESSION_AUTH_TOKEN) || localStorage.getItem(SESSION_AUTH_TOKEN);
+            if (session) {
+              const parsed = JSON.parse(session);
+              parsed.username = finalUser;
+              sessionStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify(parsed));
+              if (localStorage.getItem(SESSION_AUTH_TOKEN)) {
+                localStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify(parsed));
+              }
+            }
+            return { success: true, message: data.message || 'Admin credentials updated successfully in database!' };
+          } else {
+            return { success: false, message: data.error || 'Failed to update credentials.' };
           }
+        } catch (netErr) {
+          // Fall through to direct Firestore update if server endpoint unavailable
         }
-      } catch (e) {}
-
-      return { success: true, message: 'Admin credentials updated successfully!' };
-    }
-
-    async resetAdminCredentials() {
-      const defaultAuthData = {
-        username: 'admin',
-        hash: DEFAULT_AUTH_HASH,
-        updatedAt: new Date().toISOString()
-      };
-
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(defaultAuthData));
-
-      if (this.isFirebaseReady && this.firestore) {
-        try {
-          await this.firestore.collection('settings').doc('admin_auth').set(defaultAuthData);
-        } catch (e) {}
       }
 
-      // Update active session if logged in
-      try {
-        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN);
-        if (session) {
-          const parsed = JSON.parse(session);
-          parsed.username = 'admin';
-          sessionStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify(parsed));
-        }
-      } catch (e) {}
+      // Direct Firestore update fallback (when running without serverless API)
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          const fireDoc = await this.firestore.collection('registrations').doc('sbg_admin_auth').get();
+          if (!fireDoc.exists) {
+            return { success: false, message: 'Admin account not found in database.' };
+          }
+          const data = fireDoc.data();
+          const activeUser = (data.username || 'admin').toLowerCase();
+          const activeHash = data.hash;
 
-      return { success: true, message: 'Admin credentials reset to default (Username: admin, Password: password123)' };
+          const curHash = await sha256(`${activeUser}:${currentPassword}`);
+          if (curHash !== activeHash) {
+            return { success: false, message: 'Current password is incorrect.' };
+          }
+
+          const finalUser = (newUsername && newUsername.trim()) ? newUsername.trim().toLowerCase() : activeUser;
+          const newHash = await sha256(`${finalUser}:${newPassword}`);
+          const newAuthData = {
+            username: finalUser,
+            hash: newHash,
+            updatedAt: new Date().toISOString()
+          };
+
+          await this.firestore.collection('registrations').doc('sbg_admin_auth').set(newAuthData);
+          localStorage.removeItem('aws_sbg_admin_auth');
+
+          return { success: true, message: 'Admin credentials updated successfully in database!' };
+        } catch (dbErr) {
+          return { success: false, message: 'Database error: ' + dbErr.message };
+        }
+      }
+
+      return { success: false, message: 'Unable to connect to database to update credentials.' };
     }
 
     // ==========================================

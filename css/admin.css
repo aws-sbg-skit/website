@@ -362,6 +362,23 @@ body {
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
 }
 
+/* Eliminate green border on Admin Login inputs */
+.admin-login-wrapper input,
+.admin-login-wrapper .input-with-icon input,
+.admin-login-wrapper input.is-valid,
+.admin-login-wrapper .input-with-icon input.is-valid {
+  border-color: var(--border) !important;
+  box-shadow: none !important;
+}
+
+.admin-login-wrapper input:focus,
+.admin-login-wrapper .input-with-icon input:focus,
+.admin-login-wrapper input.is-valid:focus,
+.admin-login-wrapper .input-with-icon input.is-valid:focus {
+  border-color: var(--orange) !important;
+  box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.25) !important;
+}
+
 .field-error-msg {
   color: #f87171;
   font-size: 11.5px;
