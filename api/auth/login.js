@@ -4,7 +4,7 @@
  */
 
 const crypto = require('crypto');
-const { checkRateLimit, clearRateLimit, validateLogin, createSessionToken } = require('../utils/validation');
+const { validateLogin, createSessionToken } = require('../utils/validation');
 
 // Master admin credentials (customizable via env vars)
 const ADMIN_USER = (process.env.ADMIN_USER || 'admin').toLowerCase();
@@ -23,15 +23,6 @@ module.exports = async (req, res) => {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, errors: ['Method not allowed.'] });
-  }
-
-  // Rate Limiting (15 attempts per 5 minutes per IP to prevent accidental lockout)
-  const clientIp = req.headers['x-forwarded-for'] || (req.socket && req.socket.remoteAddress) || '127.0.0.1';
-  if (!checkRateLimit(clientIp, 'admin_login', 15, 300000)) {
-    return res.status(429).json({
-      success: false,
-      errors: ['Too many failed login attempts. Account temporarily locked for 5 minutes.']
-    });
   }
 
   try {

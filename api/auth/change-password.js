@@ -4,7 +4,7 @@
  */
 
 const crypto = require('crypto');
-const { clearRateLimit, createSessionToken } = require('../utils/validation');
+const { createSessionToken } = require('../utils/validation');
 
 const ADMIN_USER = (process.env.ADMIN_USER || 'admin').toLowerCase();
 const DEFAULT_HASH = 'c8b0d8a4a585323c7e2c9d7624779327548d6a033a9ee9e427d3faad84e40df6';
@@ -82,10 +82,6 @@ module.exports = async (req, res) => {
     } catch (fsErr) {
       console.warn('Failed to persist to Firestore:', fsErr);
     }
-
-    // 5. Reset rate limit for client
-    const clientIp = req.headers['x-forwarded-for'] || (req.socket && req.socket.remoteAddress) || '127.0.0.1';
-    clearRateLimit(clientIp, 'admin_login');
 
     const token = createSessionToken(finalUser);
     return res.status(200).json({

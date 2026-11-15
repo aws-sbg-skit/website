@@ -479,12 +479,8 @@
               }
               return { success: true, username: data.username };
             }
-          } else if (response.status === 429) {
-            const errData = await response.json().catch(() => ({}));
-            const errMsg = (errData.errors && errData.errors[0]) || 'Too many failed login attempts. Please wait 5 minutes.';
-            return { success: false, message: errMsg };
           }
-          // Note: If response is 401, fall through to check custom/updated credentials below
+          // Note: If response is 401 or not ok, fall through to check custom/updated credentials below
         } catch (networkErr) {
           // Fall through to local fallback authentication if offline or static file server
         }

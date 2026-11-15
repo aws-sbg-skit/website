@@ -263,50 +263,11 @@
     }, 3800);
   }
 
-  // Rate limiting / Brute-force lockout state
-  let failedLoginAttempts = 0;
-  let lockoutTimer = null;
-  let lockoutEndTime = 0;
-
   // ===================================================
-  // AUTHENTICATION LOGIC WITH BRUTE-FORCE PROTECTION
+  // AUTHENTICATION LOGIC
   // ===================================================
-  function checkLockout() {
-    const now = Date.now();
-    if (lockoutEndTime > now) {
-      const remainingSeconds = Math.ceil((lockoutEndTime - now) / 1000);
-      loginErrorText.textContent = `Too many failed attempts. Login locked for ${remainingSeconds}s.`;
-      loginErrorMsg.style.display = 'flex';
-      loginSubmitBtn.disabled = true;
-      loginSubmitBtn.style.opacity = '0.5';
-      return true;
-    }
-    return false;
-  }
-
-  function startLockout(seconds = 60) {
-    lockoutEndTime = Date.now() + (seconds * 1000);
-    checkLockout();
-
-    if (lockoutTimer) clearInterval(lockoutTimer);
-    lockoutTimer = setInterval(() => {
-      const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
-      if (remaining <= 0) {
-        clearInterval(lockoutTimer);
-        failedLoginAttempts = 0;
-        loginErrorMsg.style.display = 'none';
-        loginSubmitBtn.disabled = false;
-        loginSubmitBtn.style.opacity = '1';
-      } else {
-        loginErrorText.textContent = `Too many failed attempts. Login locked for ${remaining}s.`;
-      }
-    }, 1000);
-  }
-
   async function handleLogin(e) {
     e.preventDefault();
-    if (checkLockout()) return;
-
     loginErrorMsg.style.display = 'none';
 
     const username = adminUsernameInput.value.trim();
@@ -342,31 +303,22 @@
     try {
       const res = await service.login(username, password, remember);
       if (res.success) {
-        failedLoginAttempts = 0;
-        if (lockoutTimer) clearInterval(lockoutTimer);
         if (adminPasswordInput) adminPasswordInput.value = '';
         if (adminLoginForm) adminLoginForm.reset();
         showDashboard();
         showToast(`Welcome back, ${res.username}!`);
       } else {
-        failedLoginAttempts++;
         if (adminPasswordInput) adminPasswordInput.value = '';
-        if (failedLoginAttempts >= 5) {
-          startLockout(60);
-        } else {
-          loginErrorText.textContent = (res.message || 'Invalid username or password.') + ` (${5 - failedLoginAttempts} attempts left)`;
-          loginErrorMsg.style.display = 'flex';
-        }
+        loginErrorText.textContent = res.message || 'Invalid username or password.';
+        loginErrorMsg.style.display = 'flex';
       }
     } catch (err) {
       if (adminPasswordInput) adminPasswordInput.value = '';
       loginErrorText.textContent = err.message || 'Sign in error';
       loginErrorMsg.style.display = 'flex';
     } finally {
-      if (lockoutEndTime <= Date.now()) {
-        loginSubmitBtn.disabled = false;
-        loginSubmitBtn.style.opacity = '1';
-      }
+      loginSubmitBtn.disabled = false;
+      loginSubmitBtn.style.opacity = '1';
     }
   }
 
