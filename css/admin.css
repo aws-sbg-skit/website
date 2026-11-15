@@ -144,7 +144,7 @@ body {
 }
 
 .login-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: 32px;
 }
 
@@ -226,8 +226,30 @@ body {
   pointer-events: none;
 }
 
+.password-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
 .password-input-wrap input {
-  padding-right: 44px;
+  padding-right: 44px !important;
+}
+
+.login-site-logo {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+.login-site-logo .logo-mark {
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+.login-site-logo span {
+  text-align: left !important;
 }
 
 .btn-toggle-password {

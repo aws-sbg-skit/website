@@ -2553,19 +2553,26 @@
     adminLoginForm.addEventListener('submit', handleLogin);
     logoutBtn.addEventListener('click', handleLogout);
 
-    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
-    if (togglePasswordBtn && adminPasswordInput) {
-      togglePasswordBtn.addEventListener('click', () => {
-        const isPassword = adminPasswordInput.type === 'password';
-        adminPasswordInput.type = isPassword ? 'text' : 'password';
-        const eyeIcon = togglePasswordBtn.querySelector('.icon-eye');
-        const eyeOffIcon = togglePasswordBtn.querySelector('.icon-eye-off');
-        if (eyeIcon) eyeIcon.style.display = isPassword ? 'none' : 'block';
-        if (eyeOffIcon) eyeOffIcon.style.display = isPassword ? 'block' : 'none';
-        togglePasswordBtn.title = isPassword ? 'Hide password' : 'Show password';
-        togglePasswordBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
-      });
+    function setupPasswordToggle(btnId, inputId) {
+      const btn = document.getElementById(btnId);
+      const input = document.getElementById(inputId);
+      if (btn && input) {
+        btn.addEventListener('click', () => {
+          const isPassword = input.type === 'password';
+          input.type = isPassword ? 'text' : 'password';
+          const eyeIcon = btn.querySelector('.icon-eye');
+          const eyeOffIcon = btn.querySelector('.icon-eye-off');
+          if (eyeIcon) eyeIcon.style.display = isPassword ? 'none' : 'block';
+          if (eyeOffIcon) eyeOffIcon.style.display = isPassword ? 'block' : 'none';
+          btn.title = isPassword ? 'Hide password' : 'Show password';
+          btn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+        });
+      }
     }
+
+    setupPasswordToggle('togglePasswordBtn', 'adminPassword');
+    setupPasswordToggle('toggleCurPasswordBtn', 'currentPasswordInput');
+    setupPasswordToggle('toggleNewPasswordBtn', 'newPasswordInput');
 
     if (resetDefaultCredsBtn) {
       resetDefaultCredsBtn.addEventListener('click', handleResetToDefault);
