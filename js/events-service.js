@@ -719,7 +719,7 @@
         dateISO: eventData.dateISO || now.split('T')[0],
         venue: eventData.venue ? eventData.venue.trim() : 'SKIT Campus, Jaipur',
         description: eventData.description ? eventData.description.trim() : '',
-        badge: eventData.badge || (eventData.status === 'done' ? (eventData.dateDisplay ? `Completed — ${eventData.dateDisplay.trim()}` : 'Completed') : (eventData.status === 'open' ? 'Registrations Open' : 'Upcoming')),
+        badge: eventData.badge || (eventData.status === 'done' ? (eventData.dateDisplay ? `Completed — ${eventData.dateDisplay.trim()}` : 'Completed') : (eventData.status === 'open' ? 'Registrations Open' : (eventData.dateDisplay ? `Upcoming — ${eventData.dateDisplay.trim()}` : 'Upcoming'))),
         goodies: eventData.goodies || '🎁 Goodies Included',
         tag: eventData.tag || eventData.category || 'Event',
         capacity: eventData.capacity ? parseInt(eventData.capacity, 10) : 100,

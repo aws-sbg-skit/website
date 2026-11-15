@@ -100,7 +100,9 @@
       } else if (isOpen) {
         badgeHtml = `<span class="badge soon" style="color: #34d399; border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08);">● Open for Registration</span>`;
       } else {
-        badgeHtml = `<span class="badge soon">${escapeHTML(ev.badge || ('Upcoming — ' + ev.dateDisplay))}</span>`;
+        const dateStr = (ev.dateDisplay || '').trim();
+        const badgeLabel = dateStr ? `Upcoming — ${dateStr}` : (ev.badge || 'Upcoming');
+        badgeHtml = `<span class="badge soon">${escapeHTML(badgeLabel)}</span>`;
       }
 
       // Goodies
