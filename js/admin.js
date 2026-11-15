@@ -114,6 +114,61 @@
   const cancelEventModalBtn = document.getElementById('cancelEventModalBtn');
   const saveEventBtnText = document.getElementById('saveEventBtnText');
 
+  // DOM Elements - Certificates Tab
+  const badgeCertsCount = document.getElementById('badgeCertsCount');
+  const certEventFilter = document.getElementById('certEventFilter');
+  const certRoleSelect = document.getElementById('certRoleSelect');
+  const certIssueDateInput = document.getElementById('certIssueDateInput');
+  const certDescGroup = document.getElementById('certDescGroup');
+  const certDescInput = document.getElementById('certDescInput');
+  const certDescCharCount = document.getElementById('certDescCharCount');
+  const uploadExcelInput = document.getElementById('uploadExcelInput');
+  const certCustomTextGroup = document.getElementById('certCustomTextGroup');
+  const certCustomTextInput = document.getElementById('certCustomTextInput');
+  const formatCard1 = document.getElementById('formatCard1');
+  const formatCard2 = document.getElementById('formatCard2');
+  const certAttendeeCountLabel = document.getElementById('certAttendeeCountLabel');
+  const btnPreviewSelectedCert = document.getElementById('btnPreviewSelectedCert');
+  const btnBulkGenerateCerts = document.getElementById('btnBulkGenerateCerts');
+  const btnBulkDownloadZip = document.getElementById('btnBulkDownloadZip');
+  const btnBulkEmailCerts = document.getElementById('btnBulkEmailCerts');
+  const selectAllCertsCheckbox = document.getElementById('selectAllCertsCheckbox');
+  const certificatesTableBody = document.getElementById('certificatesTableBody');
+
+  // DOM Elements - Certificate Preview Modal
+  const certPreviewModalOverlay = document.getElementById('certPreviewModalOverlay');
+  const closeCertPreviewModalBtn = document.getElementById('closeCertPreviewModalBtn');
+  const certPreviewModalTitle = document.getElementById('certPreviewModalTitle');
+  const certPreviewModalSub = document.getElementById('certPreviewModalSub');
+  const certPreviewCanvasHolder = document.getElementById('certPreviewCanvasHolder');
+  const certPreviewModalId = document.getElementById('certPreviewModalId');
+  const certPreviewModalVerifyLink = document.getElementById('certPreviewModalVerifyLink');
+  const certPreviewCopyLinkBtn = document.getElementById('certPreviewCopyLinkBtn');
+  const certPreviewDownloadPngBtn = document.getElementById('certPreviewDownloadPngBtn');
+  const certPreviewDownloadPdfBtn = document.getElementById('certPreviewDownloadPdfBtn');
+
+  // DOM Elements - Bulk Email Modal
+  const certEmailModalOverlay = document.getElementById('certEmailModalOverlay');
+  const closeCertEmailModalBtn = document.getElementById('closeCertEmailModalBtn');
+  const certEmailModalSubtitle = document.getElementById('certEmailModalSubtitle');
+  const certEmailEventName = document.getElementById('certEmailEventName');
+  const certEmailRecipientSummary = document.getElementById('certEmailRecipientSummary');
+  const certEmailFormatBadge = document.getElementById('certEmailFormatBadge');
+  const certEmailSubject = document.getElementById('certEmailSubject');
+  const certEmailBodyTemplate = document.getElementById('certEmailBodyTemplate');
+  const certEmailProgressContainer = document.getElementById('certEmailProgressContainer');
+  const certEmailProgressLabel = document.getElementById('certEmailProgressLabel');
+  const certEmailProgressPercent = document.getElementById('certEmailProgressPercent');
+  const certEmailProgressBar = document.getElementById('certEmailProgressBar');
+  const certEmailStatusLog = document.getElementById('certEmailStatusLog');
+  const certEmailCopyLinksBatchBtn = document.getElementById('certEmailCopyLinksBatchBtn');
+  const certEmailMailtoBtn = document.getElementById('certEmailMailtoBtn');
+  const certEmailDispatchBtn = document.getElementById('certEmailDispatchBtn');
+  const gmailAppPasswordInput = document.getElementById('gmailAppPasswordInput');
+  const btnTestSmtpConnection = document.getElementById('btnTestSmtpConnection');
+  const smtpConnectionBadge = document.getElementById('smtpConnectionBadge');
+  const saveGmailAppPwCheckbox = document.getElementById('saveGmailAppPwCheckbox');
+
   // Toast
   const adminToast = document.getElementById('adminToast');
   const toastMsg = document.getElementById('toastMsg');
@@ -124,6 +179,10 @@
   let cachedEvents = [];
   let cachedRegistrations = [];
   let cachedChampions = [];
+  let cachedCertificates = [];
+  let currentPreviewCanvas = null;
+  let currentPreviewCertId = '';
+  let activeCertFormat = 'format1';
 
   // ===================================================
   // INITIALIZATION & AUTH STATE
@@ -175,7 +234,7 @@
 
   async function loadDashboardData() {
     updateDbStatusBadge();
-    await Promise.all([loadEvents(), loadRegistrations(), loadChampions()]);
+    await Promise.all([loadEvents(), loadRegistrations(), loadChampions(), loadCertificates()]);
     updateStats();
     loadFirebaseConfigView();
   }
@@ -344,16 +403,19 @@
 
     const tabEvents = document.getElementById('tabEventsView');
     const tabRegs = document.getElementById('tabRegistrationsView');
+    const tabCerts = document.getElementById('tabCertificatesView');
     const tabChamps = document.getElementById('tabChampionsView');
     const tabSettings = document.getElementById('tabSettingsView');
 
     if (tabEvents) tabEvents.style.display = tabName === 'events' ? 'block' : 'none';
     if (tabRegs) tabRegs.style.display = tabName === 'registrations' ? 'block' : 'none';
+    if (tabCerts) tabCerts.style.display = tabName === 'certificates' ? 'block' : 'none';
     if (tabChamps) tabChamps.style.display = tabName === 'champions' ? 'block' : 'none';
     if (tabSettings) tabSettings.style.display = tabName === 'settings' ? 'block' : 'none';
 
     if (tabName === 'events') renderEventsGrid();
     if (tabName === 'registrations') renderRegistrationsTable();
+    if (tabName === 'certificates') renderCertificatesTab();
     if (tabName === 'champions') renderChampionsGrid();
   }
 
@@ -364,6 +426,7 @@
     cachedEvents = await service.getEvents();
     renderEventsGrid();
     populateEventFilterDropdown();
+    populateCertEventFilterDropdown();
   }
 
   function renderEventsGrid() {
@@ -788,6 +851,9 @@
   async function loadRegistrations() {
     cachedRegistrations = await service.getAllRegistrations();
     renderRegistrationsTable();
+    if (document.getElementById('tabCertificatesView') && document.getElementById('tabCertificatesView').style.display !== 'none') {
+      renderCertificatesTable();
+    }
   }
 
   function populateEventFilterDropdown() {
@@ -964,6 +1030,1074 @@
     if (badgeEventsCount) badgeEventsCount.textContent = totalEvents;
     if (badgeRegsCount) badgeRegsCount.textContent = totalRegs;
     if (badgeChampionsCount) badgeChampionsCount.textContent = totalChamps;
+    if (badgeCertsCount) badgeCertsCount.textContent = cachedCertificates.length;
+  }
+
+  // ===================================================
+  // CERTIFICATES & AUTOMATED ISSUANCE LOGIC
+  // ===================================================
+  function getLiveVerifyBaseUrl() {
+    if (window.AwsCertificateEngine && typeof window.AwsCertificateEngine.getLiveVerifyBaseUrl === 'function') {
+      return window.AwsCertificateEngine.getLiveVerifyBaseUrl();
+    }
+    if (service && typeof service.getLiveVerifyBaseUrl === 'function') {
+      return service.getLiveVerifyBaseUrl();
+    }
+    if (typeof window !== 'undefined' && window.location) {
+      const host = window.location.hostname;
+      if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.startsWith('192.168.') && !host.startsWith('10.') && !host.endsWith('.local')) {
+        return window.location.origin;
+      }
+    }
+    return 'https://aws-sbg-skit.vercel.app';
+  }
+
+  async function loadCertificates() {
+    try {
+      if (service && service.getCertificates) {
+        cachedCertificates = await service.getCertificates();
+      } else {
+        cachedCertificates = [];
+      }
+    } catch (e) {
+      console.warn('Error loading certificates:', e);
+      cachedCertificates = [];
+    }
+    updateCertBadge();
+  }
+
+  function updateCertBadge() {
+    if (badgeCertsCount) {
+      badgeCertsCount.textContent = cachedCertificates.length;
+    }
+  }
+
+  function populateCertEventFilterDropdown() {
+    if (!certEventFilter) return;
+    const currentVal = certEventFilter.value;
+    certEventFilter.innerHTML = '<option value="">-- Choose Event --</option>';
+
+    cachedEvents.forEach(ev => {
+      const opt = document.createElement('option');
+      opt.value = ev.id;
+      opt.textContent = `${ev.title} (${ev.dateDisplay || ev.date || 'TBA'})`;
+      certEventFilter.appendChild(opt);
+    });
+
+    if (currentVal && cachedEvents.some(ev => ev.id === currentVal)) {
+      certEventFilter.value = currentVal;
+    } else if (cachedEvents.length > 0) {
+      certEventFilter.value = cachedEvents[0].id;
+      onCertEventChanged();
+    }
+  }
+
+  function onCertEventChanged() {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    if (ev) {
+      const rawDate = ev.dateDisplay || ev.date || '15 Nov, 2026';
+      if (certIssueDateInput) {
+        // Automatically standardize date to "15 Nov, 2026"
+        certIssueDateInput.value = window.AwsCertificateEngine && typeof window.AwsCertificateEngine.formatCertDate === 'function'
+          ? window.AwsCertificateEngine.formatCertDate(rawDate)
+          : rawDate.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
+      }
+      if (certDescInput) {
+        let desc = ev.description ? ev.description.slice(0, 40) : (ev.category || 'cloud workshop');
+        if (desc.length > 40) desc = desc.slice(0, 40);
+        certDescInput.value = desc;
+        updateCertDescCharCount();
+      }
+    }
+    renderCertificatesTable();
+  }
+
+  function updateCertDescCharCount() {
+    if (certDescCharCount && certDescInput) {
+      certDescCharCount.textContent = `${certDescInput.value.length} / 40`;
+    }
+  }
+
+  function getSelectedCertFormat() {
+    const radio = document.querySelector('input[name="certFormatChoice"]:checked');
+    return radio ? radio.value : activeCertFormat;
+  }
+
+  function setSelectedCertFormat(formatKey) {
+    activeCertFormat = formatKey === 'format2' ? 'format2' : 'format1';
+    const radio = document.querySelector(`input[name="certFormatChoice"][value="${activeCertFormat}"]`);
+    if (radio) radio.checked = true;
+
+    if (formatCard1) formatCard1.classList.toggle('active', activeCertFormat === 'format1');
+    if (formatCard2) formatCard2.classList.toggle('active', activeCertFormat === 'format2');
+
+    const check1 = formatCard1 ? formatCard1.querySelector('.format-check') : null;
+    const check2 = formatCard2 ? formatCard2.querySelector('.format-check') : null;
+    if (check1) check1.textContent = activeCertFormat === 'format1' ? '✓ Active' : 'Select';
+    if (check2) check2.textContent = activeCertFormat === 'format2' ? '✓ Active' : 'Select';
+
+    if (certEmailFormatBadge) {
+      certEmailFormatBadge.textContent = activeCertFormat === 'format1' ? 'Format 1: Dark Builder' : 'Format 2: Light Cloud';
+    }
+  }
+
+  function renderCertificatesTab() {
+    populateCertEventFilterDropdown();
+    renderCertificatesTable();
+  }
+
+  function getEventRegistrationsForCert() {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    if (!selectedEventId) return [];
+    return cachedRegistrations.filter(r => r.eventId === selectedEventId);
+  }
+
+  function renderCertificatesTable() {
+    if (!certificatesTableBody) return;
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+
+    if (!selectedEventId) {
+      certificatesTableBody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-dim);">
+            Please select an event above to view registered participants and generate certificates.
+          </td>
+        </tr>
+      `;
+      if (certAttendeeCountLabel) certAttendeeCountLabel.textContent = '(0 participants)';
+      return;
+    }
+
+    const eventRegs = getEventRegistrationsForCert();
+    if (certAttendeeCountLabel) {
+      certAttendeeCountLabel.textContent = `(${eventRegs.length} participants)`;
+    }
+
+    if (eventRegs.length === 0) {
+      certificatesTableBody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-dim);">
+            No participants registered for this event yet. As students register on the website, they will appear here automatically.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    certificatesTableBody.innerHTML = eventRegs.map(r => {
+      const attendeeName = (r.fullName || r.name || 'Participant').trim();
+      const cert = cachedCertificates.find(c => c.registrationId === r.id || (c.eventId === r.eventId && c.attendeeEmail?.toLowerCase() === r.email?.toLowerCase()));
+      const certId = cert ? cert.id : null;
+      const isSent = cert && cert.status === 'sent';
+      const isReady = !!cert;
+
+      const roleBadge = cert?.role || (certRoleSelect ? certRoleSelect.value : 'participant');
+
+      let statusHtml = '<span class="badge-cert-pending">Pending</span>';
+      if (isSent) {
+        statusHtml = '<span class="badge-cert-sent">✓ Sent</span>';
+      } else if (isReady) {
+        statusHtml = '<span class="badge-cert-ready">● Ready</span>';
+      }
+
+      return `
+        <tr data-reg-id="${escapeHTML(r.id)}">
+          <td style="text-align: center;">
+            <input type="checkbox" class="cert-row-checkbox" data-reg-id="${escapeHTML(r.id)}" data-cert-id="${certId || ''}">
+          </td>
+          <td>
+            <div style="font-weight: 600; color: var(--text);">${escapeHTML(attendeeName)}</div>
+            <div style="font-size: 11px; color: var(--text-dim);">${escapeHTML(r.phone || '')}</div>
+          </td>
+          <td>
+            <span style="font-family: var(--mono); font-size: 12px; color: var(--text-dim);">${escapeHTML(r.email)}</span>
+          </td>
+          <td>
+            <span style="font-size: 12px;">${escapeHTML(r.branch || '—')}</span>
+            ${r.year ? `<small style="color: var(--text-dim); display: block;">${escapeHTML(r.year)}</small>` : ''}
+          </td>
+          <td>
+            <span class="badge" style="background: rgba(255,255,255,0.06); color: var(--orange-light); text-transform: capitalize; font-size: 11px;">
+              ${escapeHTML(roleBadge)}
+            </span>
+          </td>
+          <td>
+            ${certId 
+              ? `<code style="font-family: var(--mono); color: var(--orange-light); font-size: 11.5px; font-weight: 600;">${escapeHTML(certId)}</code>` 
+              : `<span style="color: var(--text-dim); font-size: 11.5px;">—</span>`
+            }
+          </td>
+          <td>
+            ${statusHtml}
+          </td>
+          <td>
+            <div class="cert-action-btn-group">
+              <button type="button" class="cert-icon-btn" onclick="window.AwsAdminApp.previewCert('${escapeHTML(r.id)}')" title="Live Preview Certificate">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span>Preview</span>
+              </button>
+
+              <button type="button" class="cert-icon-btn" onclick="window.AwsAdminApp.downloadCertPng('${escapeHTML(r.id)}')" title="Download High-Res PNG">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>PNG</span>
+              </button>
+
+              <button type="button" class="cert-icon-btn" onclick="window.AwsAdminApp.downloadCertPdf('${escapeHTML(r.id)}')" title="Download Print A4 PDF">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span>PDF</span>
+              </button>
+
+              <button type="button" class="cert-icon-btn" onclick="window.AwsAdminApp.emailSingleCert('${escapeHTML(r.id)}')" title="Send Certificate Email">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </button>
+
+              ${certId ? `
+                <a href="${getLiveVerifyBaseUrl()}/verify.html?id=${encodeURIComponent(certId)}" target="_blank" class="cert-icon-btn" title="Open Official Verification Page (Live Registry)">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </a>
+              ` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Generate or get existing certificate for a registration
+  async function getOrGenerateCertificate(reg, ev) {
+    const attendeeName = (reg.fullName || reg.name || 'Participant').trim();
+    let cert = cachedCertificates.find(c => c.registrationId === reg.id || (c.eventId === reg.eventId && c.attendeeEmail?.toLowerCase() === reg.email?.toLowerCase()));
+    if (cert) return cert;
+
+    const role = certRoleSelect ? certRoleSelect.value : 'participant';
+    const customText = certCustomTextInput ? certCustomTextInput.value : '';
+    const issueDate = certIssueDateInput ? certIssueDateInput.value : (ev?.dateDisplay || '15th Nov, 2026');
+    const desc = certDescInput ? certDescInput.value : (ev?.description ? ev.description.slice(0, 80) : '');
+    const templateKey = getSelectedCertFormat();
+
+    const certData = {
+      eventId: ev ? ev.id : reg.eventId,
+      eventTitle: ev ? ev.title : 'AWS SBG SKIT Event',
+      eventDate: issueDate,
+      eventDescription: desc,
+      registrationId: reg.id,
+      attendeeName: attendeeName,
+      attendeeEmail: reg.email,
+      attendeeBranch: reg.branch || '',
+      attendeeYear: reg.year || '',
+      role: role,
+      customText: customText,
+      templateKey: templateKey,
+      status: 'ready'
+    };
+
+    cert = await service.saveCertificate(certData);
+    await loadCertificates();
+    return cert;
+  }
+
+  // Live Preview Modal logic
+  async function previewCert(regId) {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    const reg = cachedRegistrations.find(r => r.id === regId);
+    if (!reg) return;
+
+    showToast('Rendering live certificate preview...', 'info');
+
+    const attendeeName = (reg.fullName || reg.name || 'Participant').trim();
+    let cert = cachedCertificates.find(c => c.registrationId === reg.id || (c.eventId === reg.eventId && c.attendeeEmail?.toLowerCase() === reg.email?.toLowerCase()));
+    const certId = cert ? cert.id : (window.AwsCertificateEngine && typeof AwsCertificateEngine.generateUniqueCertId === 'function' ? AwsCertificateEngine.generateUniqueCertId() : ('AWS-SBG-SKIT-2026-' + Math.random().toString(36).substring(2, 7).toUpperCase()));
+
+    const role = cert?.role || (certRoleSelect ? certRoleSelect.value : 'participant');
+    const customText = cert?.customText || (certCustomTextInput ? certCustomTextInput.value : '');
+    const issueDate = cert?.eventDate || (certIssueDateInput ? certIssueDateInput.value : (ev?.dateDisplay || '15th Nov, 2026'));
+    const desc = cert?.eventDescription || (certDescInput ? certDescInput.value : (ev?.description ? ev.description.slice(0, 80) : ''));
+    const templateKey = cert?.templateKey || getSelectedCertFormat();
+
+    const result = await window.AwsCertificateEngine.renderCertificate({
+      attendeeName: attendeeName,
+      eventTitle: ev ? ev.title : 'AWS SBG SKIT Event',
+      eventDescription: desc,
+      eventDate: issueDate,
+      role: role,
+      customText: customText,
+      templateKey: templateKey,
+      certificateId: certId,
+      verifyBaseUrl: getLiveVerifyBaseUrl()
+    });
+
+    currentPreviewCanvas = result.canvas;
+    currentPreviewCertId = result.certificateId;
+
+    if (certPreviewCanvasHolder) {
+      certPreviewCanvasHolder.innerHTML = '';
+      certPreviewCanvasHolder.appendChild(result.canvas);
+    }
+    if (certPreviewModalTitle) {
+      certPreviewModalTitle.textContent = `Certificate — ${attendeeName}`;
+    }
+    if (certPreviewModalSub) {
+      certPreviewModalSub.textContent = `${ev ? ev.title : 'Event'} • Template: ${templateKey === 'format1' ? 'Dark Builder' : 'Light Cloud'}`;
+    }
+    if (certPreviewModalId) {
+      certPreviewModalId.textContent = result.certificateId;
+    }
+    if (certPreviewModalVerifyLink) {
+      certPreviewModalVerifyLink.href = `${getLiveVerifyBaseUrl()}/verify.html?id=${encodeURIComponent(result.certificateId)}`;
+    }
+    if (certPreviewModalOverlay) {
+      certPreviewModalOverlay.style.display = 'flex';
+    }
+  }
+
+  function previewFirstAttendee() {
+    const eventRegs = getEventRegistrationsForCert();
+    if (eventRegs.length === 0) {
+      showToast('No participants available for this event to preview.', 'error');
+      return;
+    }
+    previewCert(eventRegs[0].id);
+  }
+
+  function closeCertPreviewModal() {
+    if (certPreviewModalOverlay) {
+      certPreviewModalOverlay.style.display = 'none';
+    }
+  }
+
+  async function downloadCertPng(regId) {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    const reg = cachedRegistrations.find(r => r.id === regId);
+    if (!reg) return;
+
+    const attendeeName = (reg.fullName || reg.name || 'Participant').trim();
+    showToast(`Generating PNG for ${attendeeName}...`, 'info');
+    const cert = await getOrGenerateCertificate(reg, ev);
+
+    const result = await window.AwsCertificateEngine.renderCertificate({
+      attendeeName: attendeeName,
+      eventTitle: ev ? ev.title : 'AWS SBG SKIT Event',
+      eventDescription: cert.eventDescription,
+      eventDate: cert.eventDate,
+      role: cert.role,
+      customText: cert.customText,
+      templateKey: cert.templateKey || getSelectedCertFormat(),
+      certificateId: cert.id,
+      verifyBaseUrl: getLiveVerifyBaseUrl()
+    });
+
+    const safeName = attendeeName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    window.AwsCertificateEngine.downloadPng(result.canvas, `${safeName}_${cert.id}.png`);
+    showToast(`PNG certificate downloaded for ${attendeeName}!`);
+  }
+
+  async function downloadCertPdf(regId) {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    const reg = cachedRegistrations.find(r => r.id === regId);
+    if (!reg) return;
+
+    const attendeeName = (reg.fullName || reg.name || 'Participant').trim();
+    showToast(`Generating PDF for ${attendeeName}...`, 'info');
+    const cert = await getOrGenerateCertificate(reg, ev);
+
+    const result = await window.AwsCertificateEngine.renderCertificate({
+      attendeeName: attendeeName,
+      eventTitle: ev ? ev.title : 'AWS SBG SKIT Event',
+      eventDescription: cert.eventDescription,
+      eventDate: cert.eventDate,
+      role: cert.role,
+      customText: cert.customText,
+      templateKey: cert.templateKey || getSelectedCertFormat(),
+      certificateId: cert.id,
+      verifyBaseUrl: getLiveVerifyBaseUrl()
+    });
+
+    const safeName = attendeeName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    window.AwsCertificateEngine.downloadPdf(result.canvas, `${safeName}_${cert.id}.pdf`);
+    showToast(`PDF certificate downloaded for ${attendeeName}!`);
+  }
+
+  async function emailSingleCert(regId) {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    const reg = cachedRegistrations.find(r => r.id === regId);
+    if (!reg) return;
+
+    const savedPw = localStorage.getItem('aws_sbg_gmail_app_pw');
+    if (!savedPw) {
+      openBulkEmailModal();
+      showToast('Please enter your Gmail App Password to send emails from aws.sbg.skit@gmail.com', 'info');
+      return;
+    }
+
+    const attendeeName = (reg.fullName || reg.name || 'Participant').trim();
+    showToast(`Sending certificate to ${attendeeName} from aws.sbg.skit@gmail.com...`, 'info');
+    const cert = await getOrGenerateCertificate(reg, ev);
+
+    try {
+      const result = await window.AwsCertificateEngine.renderCertificate({
+        attendeeName: attendeeName,
+        eventTitle: ev ? ev.title : 'AWS Event',
+        eventDescription: cert.eventDescription,
+        eventDate: cert.eventDate,
+        role: cert.role,
+        customText: cert.customText,
+        templateKey: cert.templateKey || getSelectedCertFormat(),
+        certificateId: cert.id,
+        verifyBaseUrl: getLiveVerifyBaseUrl()
+      });
+
+      const verifyUrl = `${getLiveVerifyBaseUrl()}/verify.html?id=${encodeURIComponent(cert.id)}`;
+      const safeName = attendeeName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const attachmentBase64 = result.dataUrl.split(',')[1];
+      const attachmentFilename = `${safeName}_${cert.id}.png`;
+
+      const subject = `Your Certificate: ${ev ? ev.title : 'AWS Event'} — AWS SBG SKIT`;
+      const body = `Dear ${attendeeName},\n\n` +
+        `Congratulations on participating in "${ev ? ev.title : 'AWS Event'}" with the AWS Student Builder Group at SKIT, Jaipur!\n\n` +
+        `Your official verified certificate is attached to this email. You can also view and verify your credential online anytime at:\n${verifyUrl}\n\n` +
+        `Certificate ID: ${cert.id}\nDate of Issue: ${cert.eventDate}\n\n` +
+        `You can also add this verified credential to your LinkedIn profile with 1 click.\n\n` +
+        `Keep Building!\nAWS Student Builder Group, SKIT Jaipur\nhttps://builder.aws.com`;
+
+      const resp = await fetch('/api/send-certificate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sender_email: 'aws.sbg.skit@gmail.com',
+          app_password: savedPw,
+          recipient_email: reg.email,
+          recipient_name: attendeeName,
+          subject: subject,
+          body: body,
+          attachment_base64: attachmentBase64,
+          attachment_filename: attachmentFilename
+        })
+      });
+
+      const res = await resp.json();
+      if (res.success) {
+        await service.updateCertificateStatus(cert.id, 'sent');
+        cert.status = 'sent';
+        renderCertificatesTable();
+        showToast(`Certificate sent to ${reg.email} from aws.sbg.skit@gmail.com!`);
+      } else {
+        showToast(`Send error: ${res.error}`, 'error');
+        openBulkEmailModal();
+      }
+    } catch (e) {
+      showToast(`Error: ${e.message}`, 'error');
+    }
+  }
+
+  // Bulk Actions
+  async function handleBulkGenerateCerts() {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    if (!ev) {
+      showToast('Please select an event first.', 'error');
+      return;
+    }
+
+    const eventRegs = getEventRegistrationsForCert();
+    if (eventRegs.length === 0) {
+      showToast('No registrations found for this event.', 'error');
+      return;
+    }
+
+    if (btnBulkGenerateCerts) {
+      btnBulkGenerateCerts.disabled = true;
+      btnBulkGenerateCerts.innerHTML = '<span>Generating...</span>';
+    }
+
+    let generatedCount = 0;
+    try {
+      for (const reg of eventRegs) {
+        let cert = cachedCertificates.find(c => c.registrationId === reg.id || (c.eventId === reg.eventId && c.attendeeEmail?.toLowerCase() === reg.email?.toLowerCase()));
+        if (!cert) {
+          await getOrGenerateCertificate(reg, ev);
+          generatedCount++;
+        }
+      }
+      await loadCertificates();
+      // Sync all generated certificates to persistent local database data/certificates.json
+      try {
+        await fetch('/api/save-certificates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ certificates: cachedCertificates })
+        });
+      } catch (syncErr) {}
+
+      renderCertificatesTable();
+      showToast(`Generated ${generatedCount} certificates successfully! (Total ready: ${eventRegs.length})`);
+    } catch (err) {
+      console.error(err);
+      showToast('Error generating certificates.', 'error');
+    } finally {
+      if (btnBulkGenerateCerts) {
+        btnBulkGenerateCerts.disabled = false;
+        btnBulkGenerateCerts.innerHTML = `
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span>Generate All Certificates</span>
+        `;
+      }
+    }
+  }
+
+  async function handleBulkDownloadZip() {
+    if (!window.JSZip) {
+      showToast('ZIP library not loaded. Please refresh page.', 'error');
+      return;
+    }
+
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    if (!ev) {
+      showToast('Please select an event first.', 'error');
+      return;
+    }
+
+    const eventRegs = getEventRegistrationsForCert();
+    if (eventRegs.length === 0) {
+      showToast('No participants to export.', 'error');
+      return;
+    }
+
+    if (btnBulkDownloadZip) {
+      btnBulkDownloadZip.disabled = true;
+      btnBulkDownloadZip.innerHTML = '<span>Building ZIP...</span>';
+    }
+
+    showToast(`Rendering ${eventRegs.length} certificates and packaging ZIP archive...`, 'info');
+
+    try {
+      const zip = new window.JSZip();
+      const safeEventTitle = (ev.title || 'Event').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const folder = zip.folder(`${safeEventTitle}_Certificates`);
+
+      for (let i = 0; i < eventRegs.length; i++) {
+        const reg = eventRegs[i];
+        const attendeeName = (reg.fullName || reg.name || `Participant_${i+1}`).trim();
+        const cert = await getOrGenerateCertificate(reg, ev);
+
+        const result = await window.AwsCertificateEngine.renderCertificate({
+          attendeeName: attendeeName,
+          eventTitle: ev.title,
+          eventDescription: cert.eventDescription,
+          eventDate: cert.eventDate,
+          role: cert.role,
+          customText: cert.customText,
+          templateKey: cert.templateKey || getSelectedCertFormat(),
+          certificateId: cert.id,
+          verifyBaseUrl: getLiveVerifyBaseUrl()
+        });
+
+        // Convert canvas to blob / base64
+        const dataUrl = result.canvas.toDataURL('image/png');
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+        const safeName = attendeeName.replace(/[^a-zA-Z0-9_-]/g, '_');
+        folder.file(`${safeName}_${cert.id}.png`, base64Data, { base64: true });
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const downloadLink = document.createElement('a');
+      downloadLink.href = URL.createObjectURL(zipBlob);
+      downloadLink.download = `${safeEventTitle}_Certificates.zip`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      setTimeout(() => URL.revokeObjectURL(downloadLink.href), 1000);
+
+      showToast(`ZIP package downloaded successfully with ${eventRegs.length} certificates!`);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to build ZIP archive: ' + err.message, 'error');
+    } finally {
+      if (btnBulkDownloadZip) {
+        btnBulkDownloadZip.disabled = false;
+        btnBulkDownloadZip.innerHTML = `
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="21 8 21 21 3 21 3 8"></polyline>
+            <rect x="1" y="3" width="22" height="5"></rect>
+            <line x1="10" y1="12" x2="14" y2="12"></line>
+          </svg>
+          <span>Download All (ZIP)</span>
+        `;
+      }
+    }
+  }
+
+  // Excel / CSV Participant Upload
+  function handleExcelUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    if (!ev) {
+      showToast('Please select a target event before uploading participants Excel.', 'error');
+      uploadExcelInput.value = '';
+      return;
+    }
+
+    if (!window.XLSX) {
+      showToast('Excel library loading... Please try again.', 'error');
+      return;
+    }
+
+    showToast('Parsing participant spreadsheet...', 'info');
+
+    const reader = new FileReader();
+    reader.onload = async function (evt) {
+      try {
+        const data = evt.target.result;
+        const workbook = window.XLSX.read(data, { type: 'binary' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rows = window.XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+        if (!rows || rows.length === 0) {
+          showToast('The uploaded Excel file appears to be empty.', 'error');
+          uploadExcelInput.value = '';
+          return;
+        }
+
+        let importedCount = 0;
+        const defaultRole = certRoleSelect ? certRoleSelect.value : 'participant';
+
+        for (const row of rows) {
+          let name = '';
+          let email = '';
+          let phone = '';
+          let roll = '';
+          let branch = '';
+          let year = '';
+          let role = defaultRole;
+
+          for (const key of Object.keys(row)) {
+            const k = key.trim().toLowerCase();
+            const val = String(row[key] || '').trim();
+            if (!val) continue;
+
+            if (k.includes('name') || k === 'participant' || k === 'student' || k === 'recipient') {
+              if (!name) name = val;
+            } else if (k.includes('email') || k.includes('mail')) {
+              if (!email) email = val;
+            } else if (k.includes('phone') || k.includes('mobile') || k.includes('whatsapp') || k.includes('contact')) {
+              if (!phone) phone = val;
+            } else if (k.includes('roll')) {
+              if (!roll) roll = val;
+            } else if (k.includes('branch') || k.includes('dept') || k.includes('department')) {
+              if (!branch) branch = val;
+            } else if (k.includes('year')) {
+              if (!year) year = val;
+            } else if (k.includes('role') || k.includes('track')) {
+              role = val.toLowerCase();
+            }
+          }
+
+          if (name && email) {
+            let existing = cachedRegistrations.find(r => r.eventId === ev.id && r.email?.toLowerCase() === email.toLowerCase());
+            if (!existing) {
+              const regData = {
+                id: 'reg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                eventId: ev.id,
+                eventTitle: ev.title,
+                eventDate: ev.dateDisplay,
+                fullName: name,
+                email: email.toLowerCase(),
+                phone: phone,
+                branch: branch || 'CSE',
+                year: year || '1st Year',
+                rollNumber: roll || '',
+                registeredAt: new Date().toISOString()
+              };
+              cachedRegistrations.unshift(regData);
+
+              // Auto-generate certificate
+              await getOrGenerateCertificate(regData, ev);
+              importedCount++;
+            }
+          }
+        }
+
+        localStorage.setItem('aws_sbg_registrations_v1', JSON.stringify(cachedRegistrations));
+        await loadCertificates();
+        renderCertificatesTable();
+        showToast(`Successfully imported ${importedCount} participants from Excel! All certificates generated.`);
+      } catch (err) {
+        console.error('Excel parse error:', err);
+        showToast('Error parsing Excel: ' + err.message, 'error');
+      } finally {
+        uploadExcelInput.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
+  }
+
+  // Bulk Email Modal & SMTP Handlers
+  function openBulkEmailModal() {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    if (!ev) {
+      showToast('Please select an event first.', 'error');
+      return;
+    }
+
+    const eventRegs = getEventRegistrationsForCert();
+    if (eventRegs.length === 0) {
+      showToast('No registered participants found for this event.', 'error');
+      return;
+    }
+
+    if (certEmailEventName) certEmailEventName.textContent = ev.title;
+    if (certEmailRecipientSummary) certEmailRecipientSummary.textContent = `${eventRegs.length} verified participant emails queued`;
+    if (certEmailFormatBadge) {
+      const fmt = getSelectedCertFormat();
+      certEmailFormatBadge.textContent = fmt === 'format1' ? 'Format 1: Dark Builder' : 'Format 2: Light Cloud';
+    }
+    if (certEmailProgressContainer) certEmailProgressContainer.style.display = 'none';
+
+    // Load saved Gmail App Password
+    if (gmailAppPasswordInput) {
+      const savedPw = localStorage.getItem('aws_sbg_gmail_app_pw');
+      if (savedPw) {
+        gmailAppPasswordInput.value = savedPw;
+        if (smtpConnectionBadge) {
+          smtpConnectionBadge.textContent = '● Saved Password Loaded';
+          smtpConnectionBadge.style.color = '#10b981';
+          smtpConnectionBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+          smtpConnectionBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+        }
+      } else {
+        if (smtpConnectionBadge) {
+          smtpConnectionBadge.textContent = 'App Password Required';
+          smtpConnectionBadge.style.color = 'var(--orange-light)';
+        }
+      }
+    }
+
+    if (certEmailModalOverlay) {
+      certEmailModalOverlay.style.display = 'flex';
+    }
+  }
+
+  function closeBulkEmailModal() {
+    if (certEmailModalOverlay) {
+      certEmailModalOverlay.style.display = 'none';
+    }
+  }
+
+  async function handleTestSmtpConnection() {
+    const pw = (gmailAppPasswordInput ? gmailAppPasswordInput.value : '').trim().replace(/\s+/g, '');
+    if (!pw) {
+      showToast('Please enter your 16-character Google App Password first.', 'error');
+      gmailAppPasswordInput.focus();
+      return;
+    }
+
+    if (btnTestSmtpConnection) {
+      btnTestSmtpConnection.disabled = true;
+      btnTestSmtpConnection.innerHTML = '<span>Testing...</span>';
+    }
+    if (smtpConnectionBadge) {
+      smtpConnectionBadge.textContent = 'Testing connection...';
+      smtpConnectionBadge.style.color = 'var(--text-dim)';
+    }
+
+    try {
+      const resp = await fetch('/api/test-smtp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sender_email: 'aws.sbg.skit@gmail.com',
+          app_password: pw
+        })
+      });
+
+      const res = await resp.json();
+      if (res.success) {
+        if (smtpConnectionBadge) {
+          smtpConnectionBadge.textContent = '✓ Connected to Gmail';
+          smtpConnectionBadge.style.color = '#10b981';
+          smtpConnectionBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+          smtpConnectionBadge.style.background = 'rgba(16, 185, 129, 0.1)';
+        }
+        showToast('Successfully verified Gmail connection for aws.sbg.skit@gmail.com!');
+        if (saveGmailAppPwCheckbox && saveGmailAppPwCheckbox.checked) {
+          localStorage.setItem('aws_sbg_gmail_app_pw', pw);
+        }
+      } else {
+        if (smtpConnectionBadge) {
+          smtpConnectionBadge.textContent = '✕ Connection Failed';
+          smtpConnectionBadge.style.color = '#ef4444';
+          smtpConnectionBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          smtpConnectionBadge.style.background = 'rgba(239, 68, 68, 0.1)';
+        }
+        showToast(res.error || 'Authentication failed. Check your App Password.', 'error');
+      }
+    } catch (err) {
+      if (smtpConnectionBadge) {
+        smtpConnectionBadge.textContent = '✕ Server Offline';
+        smtpConnectionBadge.style.color = '#f59e0b';
+      }
+      showToast('Cannot reach local server dispatch API. Is server.py running on port 8080?', 'error');
+    } finally {
+      if (btnTestSmtpConnection) {
+        btnTestSmtpConnection.disabled = false;
+        btnTestSmtpConnection.innerHTML = '<span>Test Connection</span>';
+      }
+    }
+  }
+
+  async function handleCopyCertLinksCsv() {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    const eventRegs = getEventRegistrationsForCert();
+
+    if (!ev || eventRegs.length === 0) {
+      showToast('No participants available.', 'error');
+      return;
+    }
+
+    const rows = [
+      ['Participant Name', 'College Email', 'WhatsApp / Mobile', 'Role', 'Certificate ID', 'Verification URL', 'Status'].join(',')
+    ];
+
+    for (const reg of eventRegs) {
+      const attendeeName = (reg.fullName || reg.name || 'Participant').trim();
+      const cert = await getOrGenerateCertificate(reg, ev);
+      const verifyUrl = `${getLiveVerifyBaseUrl()}/verify.html?id=${encodeURIComponent(cert.id)}`;
+      rows.push([
+        `"${attendeeName.replace(/"/g, '""')}"`,
+        `"${(reg.email || '').replace(/"/g, '""')}"`,
+        `"${(reg.phone || '').replace(/"/g, '""')}"`,
+        `"${(cert.role || 'participant').replace(/"/g, '""')}"`,
+        `"${cert.id}"`,
+        `"${verifyUrl}"`,
+        `"${cert.status || 'ready'}"`
+      ].join(','));
+    }
+
+    const csvContent = rows.join('\n');
+    await navigator.clipboard.writeText(csvContent);
+    showToast(`Copied certificate links CSV for ${eventRegs.length} participants to clipboard!`);
+  }
+
+  function handleBulkEmailMailto() {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    const eventRegs = getEventRegistrationsForCert();
+
+    if (!ev || eventRegs.length === 0) {
+      showToast('No participants available.', 'error');
+      return;
+    }
+
+    const emails = eventRegs.map(r => r.email).filter(Boolean);
+    const subject = encodeURIComponent(certEmailSubject ? certEmailSubject.value : `Your Certificate — ${ev.title}`);
+    const body = encodeURIComponent(
+      `Hello Builders,\n\n` +
+      `Your certificates for "${ev.title}" are now live on the official credential registry!\n\n` +
+      `You can verify and download your certificate anytime at:\n${getLiveVerifyBaseUrl()}/verify.html\n\n` +
+      `Keep Building!\nAWS Student Builder Group, SKIT Jaipur`
+    );
+
+    window.open(`mailto:?bcc=${encodeURIComponent(emails.join(','))}&subject=${subject}&body=${body}`, '_blank');
+    showToast(`Opened email draft with ${emails.length} recipients in BCC.`);
+  }
+
+  // Automated Bulk Email Dispatch with Certificate Attachment
+  async function handleBulkEmailDispatch() {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    const ev = cachedEvents.find(e => e.id === selectedEventId);
+    const eventRegs = getEventRegistrationsForCert();
+
+    if (!ev || eventRegs.length === 0) {
+      showToast('No participants available to email.', 'error');
+      return;
+    }
+
+    const appPassword = (gmailAppPasswordInput ? gmailAppPasswordInput.value : '').trim().replace(/\s+/g, '');
+    if (!appPassword) {
+      showToast('Please enter your 16-character Google App Password for aws.sbg.skit@gmail.com.', 'error');
+      gmailAppPasswordInput.focus();
+      return;
+    }
+
+    if (saveGmailAppPwCheckbox && saveGmailAppPwCheckbox.checked) {
+      localStorage.setItem('aws_sbg_gmail_app_pw', appPassword);
+    }
+
+    const attachFormat = document.querySelector('input[name="emailAttachmentFormat"]:checked')?.value || 'png';
+    const rawSubject = certEmailSubject ? certEmailSubject.value : 'Your Certificate of Participation — AWS Student Builder Group SKIT';
+    const rawBody = certEmailBodyTemplate ? certEmailBodyTemplate.value : '';
+
+    if (certEmailDispatchBtn) {
+      certEmailDispatchBtn.disabled = true;
+      certEmailDispatchBtn.innerHTML = '<span>Sending from aws.sbg.skit@gmail.com...</span>';
+    }
+    if (certEmailProgressContainer) certEmailProgressContainer.style.display = 'block';
+    if (certEmailStatusLog) certEmailStatusLog.innerHTML = '';
+
+    let successCount = 0;
+    let failCount = 0;
+    const total = eventRegs.length;
+
+    for (let i = 0; i < total; i++) {
+      const reg = eventRegs[i];
+      const attendeeName = (reg.fullName || reg.name || 'Participant').trim();
+      const cert = await getOrGenerateCertificate(reg, ev);
+
+      const pct = Math.round(((i + 1) / total) * 100);
+      if (certEmailProgressBar) certEmailProgressBar.style.width = `${pct}%`;
+      if (certEmailProgressPercent) certEmailProgressPercent.textContent = `${pct}%`;
+      if (certEmailProgressLabel) certEmailProgressLabel.textContent = `Sending ${i + 1} of ${total}: ${attendeeName}...`;
+
+      try {
+        // Render certificate on canvas
+        const result = await window.AwsCertificateEngine.renderCertificate({
+          attendeeName: attendeeName,
+          eventTitle: ev.title,
+          eventDescription: cert.eventDescription,
+          eventDate: cert.eventDate,
+          role: cert.role,
+          customText: cert.customText,
+          templateKey: cert.templateKey || getSelectedCertFormat(),
+          certificateId: cert.id,
+          verifyBaseUrl: getLiveVerifyBaseUrl()
+        });
+
+        // Generate attachment data
+        let attachmentBase64 = '';
+        let attachmentFilename = '';
+        const safeName = attendeeName.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+        if (attachFormat === 'pdf' && window.jspdf && window.jspdf.jsPDF) {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+          const imgData = result.canvas.toDataURL('image/png');
+          pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+          const pdfDataUri = pdf.output('datauristring');
+          attachmentBase64 = pdfDataUri.split(',')[1];
+          attachmentFilename = `${safeName}_${cert.id}.pdf`;
+        } else {
+          attachmentBase64 = result.dataUrl.split(',')[1];
+          attachmentFilename = `${safeName}_${cert.id}.png`;
+        }
+
+        // Replace template tags
+        const verifyUrl = `${getLiveVerifyBaseUrl()}/verify.html?id=${encodeURIComponent(cert.id)}`;
+        const personalizedSubject = rawSubject
+          .replace(/{{name}}/g, attendeeName)
+          .replace(/{{event}}/g, ev.title)
+          .replace(/{{role}}/g, cert.role || 'participant')
+          .replace(/{{cert_id}}/g, cert.id)
+          .replace(/{{date}}/g, cert.eventDate || ev.dateDisplay);
+
+        const personalizedBody = rawBody
+          .replace(/{{name}}/g, attendeeName)
+          .replace(/{{event}}/g, ev.title)
+          .replace(/{{role}}/g, cert.role || 'participant')
+          .replace(/{{cert_id}}/g, cert.id)
+          .replace(/{{verify_url}}/g, verifyUrl)
+          .replace(/{{date}}/g, cert.eventDate || ev.dateDisplay);
+
+        // POST to backend SMTP API
+        const resp = await fetch('/api/send-certificate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender_email: 'aws.sbg.skit@gmail.com',
+            app_password: appPassword,
+            recipient_email: reg.email,
+            recipient_name: attendeeName,
+            subject: personalizedSubject,
+            body: personalizedBody,
+            attachment_base64: attachmentBase64,
+            attachment_filename: attachmentFilename
+          })
+        });
+
+        const resData = await resp.json();
+
+        if (resData.success) {
+          successCount++;
+          await service.updateCertificateStatus(cert.id, 'sent');
+          cert.status = 'sent';
+
+          if (certEmailStatusLog) {
+            const line = document.createElement('div');
+            line.style.color = '#34d399';
+            line.style.padding = '2px 0';
+            line.textContent = `✓ [SENT FROM GMAIL] ${attendeeName} <${reg.email}> • Attachment: ${attachmentFilename}`;
+            certEmailStatusLog.appendChild(line);
+            certEmailStatusLog.scrollTop = certEmailStatusLog.scrollHeight;
+          }
+        } else {
+          failCount++;
+          if (certEmailStatusLog) {
+            const line = document.createElement('div');
+            line.style.color = '#f87171';
+            line.style.padding = '2px 0';
+            line.textContent = `✕ [FAILED] ${attendeeName} <${reg.email}>: ${resData.error || 'Unknown error'}`;
+            certEmailStatusLog.appendChild(line);
+            certEmailStatusLog.scrollTop = certEmailStatusLog.scrollHeight;
+          }
+        }
+      } catch (sendErr) {
+        failCount++;
+        if (certEmailStatusLog) {
+          const line = document.createElement('div');
+          line.style.color = '#f87171';
+          line.style.padding = '2px 0';
+          line.textContent = `✕ [NETWORK ERROR] ${attendeeName} <${reg.email}>: ${sendErr.message}`;
+          certEmailStatusLog.appendChild(line);
+          certEmailStatusLog.scrollTop = certEmailStatusLog.scrollHeight;
+        }
+      }
+    }
+
+    if (certEmailProgressLabel) {
+      certEmailProgressLabel.textContent = `Finished! ${successCount} sent successfully from aws.sbg.skit@gmail.com${failCount > 0 ? `, ${failCount} failed` : ''}.`;
+    }
+    renderCertificatesTable();
+    showToast(`Bulk email finished: ${successCount} sent from aws.sbg.skit@gmail.com!`);
+
+    if (certEmailDispatchBtn) {
+      certEmailDispatchBtn.disabled = false;
+      certEmailDispatchBtn.innerHTML = `
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+        <span>Send All from aws.sbg.skit@gmail.com</span>
+      `;
+    }
   }
 
   // ===================================================
@@ -1353,6 +2487,77 @@
     saveFirebaseConfigBtn.addEventListener('click', handleSaveFirebaseConfig);
     clearFirebaseConfigBtn.addEventListener('click', handleClearFirebaseConfig);
     changePasswordForm.addEventListener('submit', handleChangePassword);
+
+    // Certificates handlers
+    if (certEventFilter) certEventFilter.addEventListener('change', onCertEventChanged);
+    if (formatCard1) formatCard1.addEventListener('click', () => setSelectedCertFormat('format1'));
+    if (formatCard2) formatCard2.addEventListener('click', () => setSelectedCertFormat('format2'));
+    if (certRoleSelect) {
+      certRoleSelect.addEventListener('change', () => {
+        const isCustom = certRoleSelect.value === 'custom';
+        if (certCustomTextGroup) certCustomTextGroup.style.display = isCustom ? 'block' : 'none';
+        if (certDescGroup) certDescGroup.style.display = isCustom ? 'none' : 'block';
+      });
+    }
+
+    if (btnPreviewSelectedCert) btnPreviewSelectedCert.addEventListener('click', previewFirstAttendee);
+    if (btnBulkGenerateCerts) btnBulkGenerateCerts.addEventListener('click', handleBulkGenerateCerts);
+    if (btnBulkDownloadZip) btnBulkDownloadZip.addEventListener('click', handleBulkDownloadZip);
+    if (btnBulkEmailCerts) btnBulkEmailCerts.addEventListener('click', openBulkEmailModal);
+    if (certDescInput) certDescInput.addEventListener('input', updateCertDescCharCount);
+    if (uploadExcelInput) uploadExcelInput.addEventListener('change', handleExcelUpload);
+    if (btnTestSmtpConnection) btnTestSmtpConnection.addEventListener('click', handleTestSmtpConnection);
+
+    if (selectAllCertsCheckbox) {
+      selectAllCertsCheckbox.addEventListener('change', () => {
+        const checked = selectAllCertsCheckbox.checked;
+        document.querySelectorAll('.cert-row-checkbox').forEach(cb => cb.checked = checked);
+      });
+    }
+
+    // Preview Modal handlers
+    if (closeCertPreviewModalBtn) closeCertPreviewModalBtn.addEventListener('click', closeCertPreviewModal);
+    if (certPreviewModalOverlay) {
+      certPreviewModalOverlay.addEventListener('click', (e) => {
+        if (e.target === certPreviewModalOverlay) closeCertPreviewModal();
+      });
+    }
+    if (certPreviewCopyLinkBtn) {
+      certPreviewCopyLinkBtn.addEventListener('click', async () => {
+        if (currentPreviewCertId) {
+          const url = `${getLiveVerifyBaseUrl()}/verify.html?id=${encodeURIComponent(currentPreviewCertId)}`;
+          await navigator.clipboard.writeText(url);
+          showToast('Live Verification URL copied to clipboard!');
+        }
+      });
+    }
+    if (certPreviewDownloadPngBtn) {
+      certPreviewDownloadPngBtn.addEventListener('click', () => {
+        if (currentPreviewCanvas) {
+          window.AwsCertificateEngine.downloadPng(currentPreviewCanvas, `Certificate_${currentPreviewCertId || 'AWS-SBG'}.png`);
+          showToast('PNG downloaded!');
+        }
+      });
+    }
+    if (certPreviewDownloadPdfBtn) {
+      certPreviewDownloadPdfBtn.addEventListener('click', () => {
+        if (currentPreviewCanvas) {
+          window.AwsCertificateEngine.downloadPdf(currentPreviewCanvas, `Certificate_${currentPreviewCertId || 'AWS-SBG'}.pdf`);
+          showToast('A4 PDF downloaded!');
+        }
+      });
+    }
+
+    // Bulk Email Modal handlers
+    if (closeCertEmailModalBtn) closeCertEmailModalBtn.addEventListener('click', closeBulkEmailModal);
+    if (certEmailModalOverlay) {
+      certEmailModalOverlay.addEventListener('click', (e) => {
+        if (e.target === certEmailModalOverlay) closeBulkEmailModal();
+      });
+    }
+    if (certEmailCopyLinksBatchBtn) certEmailCopyLinksBatchBtn.addEventListener('click', handleCopyCertLinksCsv);
+    if (certEmailMailtoBtn) certEmailMailtoBtn.addEventListener('click', handleBulkEmailMailto);
+    if (certEmailDispatchBtn) certEmailDispatchBtn.addEventListener('click', handleBulkEmailDispatch);
   }
 
   // Public API for inline onclick handlers
@@ -1363,7 +2568,11 @@
     confirmDeleteEvent,
     confirmDeleteRegistration,
     openEditChampionModal,
-    confirmDeleteChampion
+    confirmDeleteChampion,
+    previewCert,
+    downloadCertPng,
+    downloadCertPdf,
+    emailSingleCert
   };
 
   // Run on DOM load

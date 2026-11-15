@@ -1,0 +1,20 @@
+[
+  {
+    "id": "AWS-SBG-SKIT-2026-DEMO1",
+    "attendeeId": "reg_demo_1",
+    "attendeeName": "VIRENDRA SHARMA",
+    "attendeeEmail": "virendra@example.com",
+    "attendeeRoll": "22ESKCS001",
+    "eventId": "event-1",
+    "eventTitle": "Orientation Session",
+    "eventDate": "22 Jul, 2026",
+    "role": "participant",
+    "description": "Meet the core team and cloud tracks",
+    "customText": "",
+    "templateKey": "format1",
+    "issueDate": "22 Jul, 2026",
+    "status": "generated",
+    "createdAt": "2026-07-22T10:00:00Z",
+    "updatedAt": "2026-07-22T10:00:00Z"
+  }
+]

@@ -147,6 +147,15 @@
         <span class="tab-badge" id="badgeRegsCount">0</span>
       </button>
 
+      <button class="admin-tab" data-tab="certificates">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="6"></circle>
+          <path d="M15.477 12.89L17 22l-5-3l-5 3l1.523-9.11"></path>
+        </svg>
+        <span>Certificates</span>
+        <span class="tab-badge" id="badgeCertsCount">0</span>
+      </button>
+
       <button class="admin-tab" data-tab="champions">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="8" r="7"></circle>
@@ -340,6 +349,192 @@
               </thead>
               <tbody id="registrationsTableBody">
                 <!-- Injected via admin.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: AUTOMATED CERTIFICATE ENGINE & VERIFICATION -->
+      <section id="tabCertificatesView" class="tab-content" style="display: none;">
+        <div class="section-toolbar">
+          <div class="toolbar-title">
+            <h2>Automated Certificate Engine &amp; Verification</h2>
+            <p>Generate verifiable credentials, choose certificate formats, bulk-email participants, and track verification records.</p>
+          </div>
+
+          <div class="toolbar-actions">
+            <a href="verify.html" target="_blank" rel="noopener" class="btn-secondary" title="Open Public Verification Portal in new tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 8v4l3 3"></path>
+              </svg>
+              <span>Verify Portal ↗</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Certificate Configuration Card -->
+        <div class="table-card" style="margin-bottom: 24px; padding: 22px 24px;">
+          <h3 style="font-size: 16px; margin: 0 0 16px; color: var(--text); display: flex; align-items: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+            </svg>
+            <span>1. Select Event &amp; Certificate Format</span>
+          </h3>
+
+          <div class="form-grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 20px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="certEventFilter">Select Target Event *</label>
+              <select id="certEventFilter" class="filter-select" style="width: 100%;">
+                <option value="">-- Choose Event --</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="certRoleSelect">Recipient Participation Role *</label>
+              <select id="certRoleSelect" class="filter-select" style="width: 100%;">
+                <option value="participant">Participant (for attending the...)</option>
+                <option value="volunteer">Volunteer (for serving as a Volunteer for...)</option>
+                <option value="coordinator">Coordinator (for successfully coordinating...)</option>
+                <option value="speaker">Speaker / Mentor (for delivering an expert session on...)</option>
+                <option value="winner">Winner (for winning &amp; outstanding achievement in...)</option>
+                <option value="custom">Custom Text Wording</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="certIssueDateInput">Issue Date *</label>
+              <input type="text" id="certIssueDateInput" class="form-control form-control-no-icon" placeholder="e.g. 15th Nov, 2026" value="15th Nov, 2026">
+            </div>
+          </div>
+
+          <div class="form-group" id="certDescGroup" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+              <label for="certDescInput" style="margin-bottom: 0;">Event Description (max 40 chars)</label>
+              <span id="certDescCharCount" style="font-size: 11px; font-family: var(--mono); color: var(--text-dim);">0 / 40</span>
+            </div>
+            <input type="text" id="certDescInput" class="form-control form-control-no-icon" maxlength="40" placeholder="e.g. cloud workshop on serverless">
+          </div>
+
+          <div class="form-group" id="certCustomTextGroup" style="display: none; margin-bottom: 20px;">
+            <label for="certCustomTextInput">Custom Participation Wording (Full Paragraph)</label>
+            <textarea id="certCustomTextInput" class="form-control form-control-no-icon" placeholder="e.g. for demonstrating exemplary builder initiative and solving AWS architectural challenges..."></textarea>
+          </div>
+
+          <!-- Format 1 vs Format 2 Visual Selector -->
+          <div style="margin-top: 10px;">
+            <label style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px; display: block;">
+              🎨 Choose Certificate Design Template:
+            </label>
+
+            <div class="cert-format-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+              <!-- Format 1 Card -->
+              <label class="cert-format-card active" id="formatCard1">
+                <input type="radio" name="certFormatChoice" value="format1" checked style="display: none;">
+                <div class="cert-format-preview">
+                  <img src="assets/certificates/template1.png" alt="Format 1: Dark Builder" style="width: 100%; height: auto; border-radius: 6px; display: block;">
+                </div>
+                <div class="cert-format-meta">
+                  <div class="format-header">
+                    <strong>Format 1: Dark Builder</strong>
+                    <span class="format-check">✓ Active</span>
+                  </div>
+                  <p>Dark grid theme, AWS Green accent, pixel trophy, AWS logo, and official Tracy Wang signature.</p>
+                </div>
+              </label>
+
+              <!-- Format 2 Card -->
+              <label class="cert-format-card" id="formatCard2">
+                <input type="radio" name="certFormatChoice" value="format2" style="display: none;">
+                <div class="cert-format-preview">
+                  <img src="assets/certificates/template2.png" alt="Format 2: Light Cloud" style="width: 100%; height: auto; border-radius: 6px; display: block;">
+                </div>
+                <div class="cert-format-meta">
+                  <div class="format-header">
+                    <strong>Format 2: Light Cloud</strong>
+                    <span class="format-check">Select</span>
+                  </div>
+                  <p>Clean white grid theme, AWS Purple accent, pixel trophy, AWS logo, and official Tracy Wang signature.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attendees & Certificates Table -->
+        <div class="table-card">
+          <div class="section-toolbar" style="padding: 16px 20px 0; border: none;">
+            <div class="toolbar-title">
+              <h3 style="font-size: 16px; margin: 0; color: var(--text);">
+                <span>2. Registered Participants</span>
+                <span style="font-size: 12px; color: var(--orange-light); margin-left: 8px;" id="certAttendeeCountLabel">(0 participants)</span>
+              </h3>
+            </div>
+
+            <div class="toolbar-actions" style="flex-wrap: wrap;">
+              <label class="btn-secondary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; margin-bottom: 0; color: #10b981; border-color: rgba(16, 185, 129, 0.4);" title="Upload participant list from Excel or CSV file">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span>Upload Excel / CSV</span>
+                <input type="file" id="uploadExcelInput" accept=".xlsx, .xls, .csv" style="display: none;">
+              </label>
+
+              <button type="button" class="btn-secondary" id="btnPreviewSelectedCert" style="padding: 8px 14px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span>Live Preview</span>
+              </button>
+
+              <button type="button" class="btn-primary" id="btnBulkGenerateCerts" style="width: auto; background: var(--orange); border-color: var(--orange); color: #000;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span>Generate All Certificates</span>
+              </button>
+
+              <button type="button" class="btn-secondary" id="btnBulkDownloadZip" style="padding: 8px 14px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                  <rect x="1" y="3" width="22" height="5"></rect>
+                  <line x1="10" y1="12" x2="14" y2="12"></line>
+                </svg>
+                <span>Download All (ZIP)</span>
+              </button>
+
+              <button type="button" class="btn-primary" id="btnBulkEmailCerts" style="width: auto; background: #2563eb; border-color: #2563eb;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <span>Bulk Email Certificates</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px; text-align: center;">
+                    <input type="checkbox" id="selectAllCertsCheckbox" title="Select All Participants">
+                  </th>
+                  <th>Recipient Name</th>
+                  <th>Contact Email</th>
+                  <th>Roll / Department</th>
+                  <th>Role / Track</th>
+                  <th>Certificate ID</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="certificatesTableBody">
+                <!-- Dynamically populated via admin.js -->
               </tbody>
             </table>
           </div>
@@ -755,9 +950,213 @@
     <span id="toastMsg">Notification message</span>
   </div>
 
+  <!-- ===================================================
+       CERTIFICATE PREVIEW MODAL
+       =================================================== -->
+  <div class="admin-modal-overlay" id="certPreviewModalOverlay" style="display: none;">
+    <div class="admin-modal cert-modal" style="max-width: 900px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin: 0; font-size: 18px;" id="certPreviewModalTitle">Certificate Live Preview</h3>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-dim);" id="certPreviewModalSub">Previewing certificate rendering before dispatch</p>
+        </div>
+        <button class="modal-close-btn" id="closeCertPreviewModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px; text-align: center;">
+        <div id="certPreviewCanvasHolder" style="max-width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5); background: #000; line-height: 0;">
+          <!-- Dynamically inserted canvas -->
+        </div>
+
+        <div style="margin-top: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-dim);">
+          <div style="text-align: left;">
+            <span style="color: var(--text);">Certificate ID:</span> <code id="certPreviewModalId" style="color: var(--orange-light); font-weight: 600;">AWS-SBG-SKIT-...</code>
+          </div>
+          <div style="text-align: right;">
+            <span>Verification Link:</span> <a href="#" id="certPreviewModalVerifyLink" target="_blank" style="color: var(--blue-light); text-decoration: underline;">Open Registry</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <button type="button" class="btn-secondary" id="certPreviewCopyLinkBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span>Copy Verification URL</span>
+        </button>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button type="button" class="btn-secondary" id="certPreviewDownloadPngBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download PNG</span>
+          </button>
+
+          <button type="button" class="btn-primary" id="certPreviewDownloadPdfBtn" style="width: auto; background: var(--orange); border-color: var(--orange); color: #000;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            <span>Download A4 PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================
+       BULK EMAIL DISPATCH MODAL
+       =================================================== -->
+  <div class="admin-modal-overlay" id="certEmailModalOverlay" style="display: none;">
+    <div class="admin-modal" style="max-width: 680px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin: 0; font-size: 18px;">Bulk Email Certificates</h3>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-dim);" id="certEmailModalSubtitle">Dispatch credentials to verified attendees</p>
+        </div>
+        <button class="modal-close-btn" id="closeCertEmailModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px;">
+        <div style="background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-size: 13px; font-weight: 600; color: #93c5fd;" id="certEmailEventName">Target Event</div>
+            <div style="font-size: 12px; color: var(--text-dim);" id="certEmailRecipientSummary">0 recipients selected</div>
+          </div>
+          <span class="badge" style="background: rgba(37,99,235,0.25); color: #93c5fd;" id="certEmailFormatBadge">Format 1: Dark</span>
+        </div>
+
+        <!-- Gmail Dispatch Config -->
+        <div style="background: rgba(255, 153, 0, 0.05); border: 1px solid rgba(255, 153, 0, 0.25); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 15px;">📧</span>
+              <strong style="font-size: 13px; color: var(--text);">Official Sender:</strong>
+              <code style="font-family: var(--mono); color: var(--orange-light); font-size: 12px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">aws.sbg.skit@gmail.com</code>
+            </div>
+            <span id="smtpConnectionBadge" style="font-size: 11px; font-family: var(--mono); padding: 2px 8px; border-radius: 12px; background: rgba(255,255,255,0.06); color: var(--text-dim); border: 1px solid var(--border);">Ready to Connect</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: flex-end;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="gmailAppPasswordInput" style="font-size: 12px; margin-bottom: 4px;">
+                Gmail 16-Char App Password *
+                <small style="color: var(--text-dim);">(Google Account &gt; Security &gt; App Passwords)</small>
+              </label>
+              <input type="password" id="gmailAppPasswordInput" class="form-control form-control-no-icon" placeholder="e.g. abcd efgh ijkl mnop" style="font-family: var(--mono); font-size: 13px;">
+            </div>
+
+            <button type="button" class="btn-secondary" id="btnTestSmtpConnection" style="padding: 9px 14px; font-size: 12px; height: 42px;">
+              <span>Test Connection</span>
+            </button>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11.5px; color: var(--text-dim); flex-wrap: wrap; gap: 6px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" id="saveGmailAppPwCheckbox" checked>
+              <span>Remember password on this device</span>
+            </label>
+            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" style="color: var(--orange-light); text-decoration: underline;">How to generate App Password &rarr;</a>
+          </div>
+        </div>
+
+        <!-- Attachment Format Choice -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="font-size: 12.5px; margin-bottom: 6px; display: block;">📎 Certificate Attachment Format:</label>
+          <div style="display: flex; gap: 16px; font-size: 13px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="radio" name="emailAttachmentFormat" value="png" checked>
+              <span>High-Resolution PNG Image (Recommended)</span>
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="radio" name="emailAttachmentFormat" value="pdf">
+              <span>Print A4 Landscape PDF Document</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="certEmailSubject">Email Subject Line *</label>
+          <input type="text" id="certEmailSubject" class="form-control form-control-no-icon" value="Your Certificate of Participation — AWS Student Builder Group SKIT">
+        </div>
+
+        <div class="form-group">
+          <label for="certEmailBodyTemplate">Email Message Template</label>
+          <p style="font-size: 11px; color: var(--text-dim); margin-bottom: 6px;">Available tags: <code>{{name}}</code>, <code>{{event}}</code>, <code>{{role}}</code>, <code>{{cert_id}}</code>, <code>{{verify_url}}</code></p>
+          <textarea id="certEmailBodyTemplate" class="form-control form-control-no-icon" style="min-height: 140px; font-size: 13px; line-height: 1.5; font-family: var(--sans);">Dear {{name}},
+
+Congratulations! Thank you for participating in {{event}} with AWS Student Builder Group at SKIT, Jaipur.
+
+Your verified certificate is ready! You can view and download your certificate anytime using your unique link below:
+{{verify_url}}
+
+Certificate ID: {{cert_id}}
+You can also add this verified credential directly to your LinkedIn profile.
+
+Keep building!
+AWS Student Builder Group, SKIT Jaipur</textarea>
+        </div>
+
+        <!-- Progress Tracker -->
+        <div id="certEmailProgressContainer" style="display: none; margin-top: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+            <span id="certEmailProgressLabel">Sending emails...</span>
+            <span id="certEmailProgressPercent">0%</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+            <div id="certEmailProgressBar" style="width: 0%; height: 100%; background: #2563eb; transition: width 0.2s;"></div>
+          </div>
+          <div id="certEmailStatusLog" style="max-height: 100px; overflow-y: auto; margin-top: 8px; font-size: 11px; font-family: var(--mono); color: var(--text-dim);"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <button type="button" class="btn-secondary" id="certEmailCopyLinksBatchBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span>Copy All Links (CSV)</span>
+        </button>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button type="button" class="btn-secondary" id="certEmailMailtoBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span>Open Email Client</span>
+          </button>
+
+          <button type="button" class="btn-primary" id="certEmailDispatchBtn" style="width: auto; background: var(--orange); border-color: var(--orange); color: #000; font-weight: 700;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+            <span>Send All from aws.sbg.skit@gmail.com</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase Compat Scripts (from Google CDN) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Certificate, QR, PDF & ZIP Libraries -->
+  <script src="js/qrcode.min.js"></script>
+  <script src="js/jspdf.umd.min.js"></script>
+  <script src="js/jszip.min.js"></script>
+  <script src="js/xlsx.full.min.js"></script>
+  <script src="js/certificate-engine.js"></script>
 
   <!-- Validation, Service & Controller -->
   <script src="js/validation.js"></script>

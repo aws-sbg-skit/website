@@ -11,6 +11,8 @@
   const STORAGE_KEY_CONFIG = 'aws_sbg_firebase_config';
   const STORAGE_KEY_AUTH = 'aws_sbg_admin_auth';
   const STORAGE_KEY_CHAMPIONS = 'aws_sbg_champions_v1';
+  const STORAGE_KEY_CERTIFICATES = 'aws_sbg_certificates_v1';
+  const STORAGE_KEY_CERT_CONFIG = 'aws_sbg_cert_config_v1';
   const SESSION_AUTH_TOKEN = 'aws_sbg_admin_session';
 
   // Seed default champions mirroring champions.html
@@ -366,6 +368,9 @@
         }
         if (!localStorage.getItem(STORAGE_KEY_REGISTRATIONS)) {
           localStorage.setItem(STORAGE_KEY_REGISTRATIONS, JSON.stringify([]));
+        }
+        if (!localStorage.getItem(STORAGE_KEY_CERTIFICATES)) {
+          localStorage.setItem(STORAGE_KEY_CERTIFICATES, JSON.stringify([]));
         }
         if (!localStorage.getItem(STORAGE_KEY_AUTH)) {
           localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify({
@@ -1198,6 +1203,218 @@
       }
 
       return { success: true };
+    }
+
+    // ==========================================
+    // CERTIFICATES MANAGEMENT & VERIFICATION
+    // ==========================================
+    async getCertificates() {
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          const snapshot = await this.firestore.collection('certificates').orderBy('createdAt', 'desc').get();
+          if (!snapshot.empty) {
+            const list = [];
+            snapshot.forEach(doc => list.push(doc.data()));
+            localStorage.setItem(STORAGE_KEY_CERTIFICATES, JSON.stringify(list));
+            return list;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch certificates from Firestore, using local store:', err);
+        }
+      }
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY_CERTIFICATES);
+        return stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    async getCertificateById(certId) {
+      if (!certId) return null;
+      const cleanId = certId.trim().toUpperCase();
+
+      // 1. Check LocalStorage first
+      const all = await this.getCertificates();
+      const found = all.find(c => c.id && c.id.toUpperCase() === cleanId);
+      if (found) return found;
+
+      // 2. Check Firestore directly by doc ID if connected
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          const doc = await this.firestore.collection('certificates').doc(cleanId).get();
+          if (doc.exists) {
+            const data = doc.data();
+            all.unshift(data);
+            localStorage.setItem(STORAGE_KEY_CERTIFICATES, JSON.stringify(all));
+            return data;
+          }
+        } catch (e) {
+          console.warn('Firestore cert lookup error:', e);
+        }
+      }
+
+      // 3. Check permanent static registry data/certificates.json
+      try {
+        const resp = await fetch('data/certificates.json');
+        if (resp.ok) {
+          const staticList = await resp.json();
+          if (Array.isArray(staticList)) {
+            const match = staticList.find(c => c.id && c.id.toUpperCase() === cleanId);
+            if (match) {
+              all.unshift(match);
+              localStorage.setItem(STORAGE_KEY_CERTIFICATES, JSON.stringify(all));
+              return match;
+            }
+          }
+        }
+      } catch (staticErr) {
+        // static lookup failed or offline
+      }
+
+      return null;
+    }
+
+    async getCertificatesByEvent(eventId) {
+      const all = await this.getCertificates();
+      return all.filter(c => c.eventId === eventId);
+    }
+
+    async saveCertificate(certData) {
+      if (!certData) throw new Error('Certificate data is required.');
+      const now = new Date().toISOString();
+
+      let certId = (certData.id || ('AWS-SBG-SKIT-' + new Date().getFullYear() + '-' + Math.random().toString(36).substring(2, 7).toUpperCase())).toUpperCase();
+      if (certId.startsWith('AWS-SBG-') && !certId.startsWith('AWS-SBG-SKIT-')) {
+        certId = certId.replace('AWS-SBG-', 'AWS-SBG-SKIT-');
+      }
+
+      const normalizedCert = {
+        id: certId,
+        attendeeId: certData.attendeeId || '',
+        attendeeName: (certData.attendeeName || certData.fullName || 'Student Builder').trim(),
+        attendeeEmail: (certData.attendeeEmail || certData.email || '').trim().toLowerCase(),
+        attendeeRoll: (certData.attendeeRoll || certData.rollNumber || '').trim().toUpperCase(),
+        eventId: certData.eventId || '',
+        eventTitle: (certData.eventTitle || '').trim(),
+        eventDate: certData.eventDate || '',
+        role: certData.role || 'participant',
+        roleText: certData.roleText || '',
+        description: (certData.description || certData.eventDescription || '').trim(),
+        customText: (certData.customText || '').trim(),
+        templateKey: certData.templateKey || 'format1',
+        issueDate: certData.issueDate || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        status: certData.status || 'generated',
+        sentAt: certData.sentAt || null,
+        createdAt: certData.createdAt || now,
+        updatedAt: now
+      };
+
+      const certs = await this.getCertificates();
+      const index = certs.findIndex(c => c.id.toUpperCase() === certId);
+      if (index !== -1) {
+        certs[index] = { ...certs[index], ...normalizedCert };
+      } else {
+        certs.unshift(normalizedCert);
+      }
+
+      localStorage.setItem(STORAGE_KEY_CERTIFICATES, JSON.stringify(certs));
+
+      // 1. Save to Cloud Firestore
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          await this.firestore.collection('certificates').doc(certId).set(normalizedCert, { merge: true });
+        } catch (err) {
+          console.warn('Failed to save certificate to Firestore:', err);
+        }
+      }
+
+      // 2. Persist to data/certificates.json via local server API
+      try {
+        if (typeof fetch === 'function') {
+          fetch('/api/save-certificates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ certificate: normalizedCert })
+          }).catch(() => {});
+        }
+      } catch (e) {}
+
+      return normalizedCert;
+    }
+
+    async saveCertificatesBatch(certList) {
+      if (!Array.isArray(certList) || certList.length === 0) return [];
+      const savedList = [];
+      for (const item of certList) {
+        const saved = await this.saveCertificate(item);
+        savedList.push(saved);
+      }
+      return savedList;
+    }
+
+    async updateCertificateStatus(certId, status = 'sent') {
+      const cleanId = (certId || '').trim().toUpperCase();
+      const certs = await this.getCertificates();
+      const index = certs.findIndex(c => c.id.toUpperCase() === cleanId);
+      if (index === -1) return null;
+
+      certs[index].status = status;
+      if (status === 'sent') certs[index].sentAt = new Date().toISOString();
+      certs[index].updatedAt = new Date().toISOString();
+
+      localStorage.setItem(STORAGE_KEY_CERTIFICATES, JSON.stringify(certs));
+
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          await this.firestore.collection('certificates').doc(cleanId).set(certs[index], { merge: true });
+        } catch (e) {}
+      }
+
+      return certs[index];
+    }
+
+    async deleteCertificate(certId) {
+      const cleanId = (certId || '').trim().toUpperCase();
+      let certs = await this.getCertificates();
+      certs = certs.filter(c => c.id.toUpperCase() !== cleanId);
+      localStorage.setItem(STORAGE_KEY_CERTIFICATES, JSON.stringify(certs));
+
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          await this.firestore.collection('certificates').doc(cleanId).delete();
+        } catch (e) {}
+      }
+
+      return { success: true };
+    }
+
+    getCertConfig() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY_CERT_CONFIG);
+        return stored ? JSON.parse(stored) : { defaultTemplate: 'format1' };
+      } catch (e) {
+        return { defaultTemplate: 'format1' };
+      }
+    }
+
+    saveCertConfig(cfg) {
+      localStorage.setItem(STORAGE_KEY_CERT_CONFIG, JSON.stringify(cfg));
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          this.firestore.collection('settings').doc('cert_config').set(cfg, { merge: true });
+        } catch (e) {}
+      }
+      return cfg;
+    }
+    getLiveVerifyBaseUrl() {
+      if (typeof window !== 'undefined' && window.location) {
+        const host = window.location.hostname;
+        if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.startsWith('192.168.') && !host.startsWith('10.') && !host.endsWith('.local')) {
+          return window.location.origin;
+        }
+      }
+      return 'https://aws-sbg-skit.vercel.app';
     }
   }
 
