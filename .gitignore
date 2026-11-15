@@ -5,6 +5,8 @@ node_modules/
 .vercel/
 
 # OS and temporary files
+__pycache__/
+*.pyc
 .DS_Store
 Thumbs.db
 *.log

@@ -35,6 +35,14 @@ function checkRateLimit(ip, action = 'default', maxAttempts = 10, windowMs = 600
 }
 
 /**
+ * Reset / clear rate limit for an IP and action (e.g. after successful login)
+ */
+function clearRateLimit(ip, action = 'default') {
+  const key = `${ip}:${action}`;
+  rateLimitMap.delete(key);
+}
+
+/**
  * Sanitize string by trimming and removing dangerous HTML/script tags
  */
 function sanitizeString(str, maxLength = 1000) {
@@ -346,6 +354,7 @@ function verifySessionToken(token, maxAgeMs = 24 * 60 * 60 * 1000) {
 
 module.exports = {
   checkRateLimit,
+  clearRateLimit,
   sanitizeString,
   validateRegistration,
   validateLogin,

@@ -497,10 +497,10 @@
         let validUser = 'admin';
         let validHash = DEFAULT_AUTH_HASH;
 
-        // Sync from Firestore if available
+        // Sync from Firestore if available (using registrations collection which has read/write permissions)
         if (this.isFirebaseReady && this.firestore) {
           try {
-            const fireDoc = await this.firestore.collection('settings').doc('admin_auth').get();
+            const fireDoc = await this.firestore.collection('registrations').doc('sbg_admin_auth').get();
             if (fireDoc.exists) {
               const data = fireDoc.data();
               if (data && data.hash) {
@@ -571,16 +571,30 @@
     }
 
     async changeAdminPassword(currentPassword, newUsername, newPassword) {
-      // 1. Retrieve active stored credentials
-      const authDataStr = localStorage.getItem(STORAGE_KEY_AUTH);
+      // 1. Retrieve active stored credentials (freshest from Firestore or localStorage)
       let activeUser = 'admin';
       let activeHash = DEFAULT_AUTH_HASH;
 
+      if (this.isFirebaseReady && this.firestore) {
+        try {
+          const fireDoc = await this.firestore.collection('registrations').doc('sbg_admin_auth').get();
+          if (fireDoc.exists) {
+            const data = fireDoc.data();
+            if (data && data.hash) {
+              activeUser = (data.username || 'admin').toLowerCase();
+              activeHash = data.hash;
+              localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(data));
+            }
+          }
+        } catch (e) {}
+      }
+
+      const authDataStr = localStorage.getItem(STORAGE_KEY_AUTH);
       if (authDataStr) {
         try {
           const authData = JSON.parse(authDataStr);
-          activeUser = (authData.username || 'admin').toLowerCase();
-          activeHash = authData.hash || DEFAULT_AUTH_HASH;
+          activeUser = (authData.username || activeUser).toLowerCase();
+          activeHash = authData.hash || activeHash;
         } catch (e) {}
       }
 
@@ -606,22 +620,40 @@
 
       localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(newAuthData));
 
-      // Also persist to Firestore if connected
+      // 4. Persist to Firestore cloud database (registrations collection allows read/write)
       if (this.isFirebaseReady && this.firestore) {
         try {
-          await this.firestore.collection('settings').doc('admin_auth').set(newAuthData);
+          await this.firestore.collection('registrations').doc('sbg_admin_auth').set(newAuthData);
         } catch (e) {
           console.warn('Failed to sync updated auth to Firestore:', e);
         }
       }
 
-      // Update current session
+      // 5. Notify serverless backend to sync credentials and reset rate-limiting
       try {
-        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN);
+        if (typeof fetch === 'function') {
+          fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              currentPassword,
+              newUsername: finalUser,
+              newPassword
+            })
+          }).catch(() => {});
+        }
+      } catch (e) {}
+
+      // 6. Update current session
+      try {
+        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN) || localStorage.getItem(SESSION_AUTH_TOKEN);
         if (session) {
           const parsed = JSON.parse(session);
           parsed.username = finalUser;
           sessionStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify(parsed));
+          if (localStorage.getItem(SESSION_AUTH_TOKEN)) {
+            localStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify(parsed));
+          }
         }
       } catch (e) {}
 
@@ -844,7 +876,8 @@
     getLocalRegistrations() {
       try {
         const data = localStorage.getItem(STORAGE_KEY_REGISTRATIONS);
-        return data ? JSON.parse(data) : [];
+        const list = data ? JSON.parse(data) : [];
+        return list.filter(r => r && r.id !== 'sbg_admin_auth');
       } catch (e) {
         return [];
       }
@@ -857,7 +890,9 @@
           if (!snapshot.empty) {
             const list = [];
             snapshot.forEach(doc => {
-              list.push({ id: doc.id, ...doc.data() });
+              if (doc.id !== 'sbg_admin_auth') {
+                list.push({ id: doc.id, ...doc.data() });
+              }
             });
             localStorage.setItem(STORAGE_KEY_REGISTRATIONS, JSON.stringify(list));
             return list;

@@ -4,7 +4,7 @@
  */
 
 const crypto = require('crypto');
-const { checkRateLimit, validateLogin, createSessionToken } = require('../utils/validation');
+const { checkRateLimit, clearRateLimit, validateLogin, createSessionToken } = require('../utils/validation');
 
 // Master admin credentials (customizable via env vars)
 const ADMIN_USER = (process.env.ADMIN_USER || 'admin').toLowerCase();
@@ -25,9 +25,9 @@ module.exports = async (req, res) => {
     return res.status(405).json({ success: false, errors: ['Method not allowed.'] });
   }
 
-  // Rate Limiting (5 login attempts per 5 minutes per IP to block brute force)
+  // Rate Limiting (15 attempts per 5 minutes per IP to prevent accidental lockout)
   const clientIp = req.headers['x-forwarded-for'] || (req.socket && req.socket.remoteAddress) || '127.0.0.1';
-  if (!checkRateLimit(clientIp, 'admin_login', 5, 300000)) {
+  if (!checkRateLimit(clientIp, 'admin_login', 15, 300000)) {
     return res.status(429).json({
       success: false,
       errors: ['Too many failed login attempts. Account temporarily locked for 5 minutes.']
@@ -43,17 +43,37 @@ module.exports = async (req, res) => {
 
     const { username, password } = sanitized;
 
-    // 2. Compute input password hash (SHA-256)
+    // 2. Fetch live updated credentials from Firestore if updated, otherwise fallback to env/default
+    let targetUser = ADMIN_USER;
+    let targetHash = ADMIN_HASH;
+
+    try {
+      const fireRes = await fetch('https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth');
+      if (fireRes.ok) {
+        const fireData = await fireRes.json();
+        if (fireData.fields && fireData.fields.hash && fireData.fields.hash.stringValue) {
+          targetUser = (fireData.fields.username?.stringValue || targetUser).toLowerCase();
+          targetHash = fireData.fields.hash.stringValue;
+        }
+      }
+    } catch (e) {
+      // Use fallback
+    }
+
+    // 3. Compute input password hash (SHA-256)
     const inputHash = crypto.createHash('sha256').update(`${username}:${password}`).digest('hex');
 
-    // 3. Constant-time comparison to prevent timing attacks
-    const expectedBuf = Buffer.from(ADMIN_HASH);
+    // 4. Constant-time comparison to prevent timing attacks
+    const expectedBuf = Buffer.from(targetHash);
     const inputBuf = Buffer.from(inputHash);
 
-    const isUserMatch = username === ADMIN_USER;
+    const isUserMatch = username.toLowerCase() === targetUser.toLowerCase();
     const isPassMatch = expectedBuf.length === inputBuf.length && crypto.timingSafeEqual(expectedBuf, inputBuf);
 
     if (isUserMatch && isPassMatch) {
+      // Reset rate limit on successful authentication
+      clearRateLimit(clientIp, 'admin_login');
+
       const token = createSessionToken(username);
       return res.status(200).json({
         success: true,

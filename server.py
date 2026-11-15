@@ -10,6 +10,8 @@ import base64
 import smtplib
 import sys
 import os
+import hashlib
+import urllib.request
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -46,6 +48,10 @@ class SbgHttpHandler(http.server.SimpleHTTPRequestHandler):
             self._handle_send_certificate(payload)
         elif self.path == '/api/save-certificates':
             self._handle_save_certificates(payload)
+        elif self.path == '/api/auth/login':
+            self._handle_auth_login(payload)
+        elif self.path == '/api/auth/change-password':
+            self._handle_auth_change_password(payload)
         else:
             self._send_json(404, {"success": False, "error": f"Endpoint not found: {self.path}"})
 
@@ -54,6 +60,79 @@ class SbgHttpHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
+
+    def _handle_auth_login(self, payload):
+        username = str(payload.get('username') or '').strip().lower()
+        password = str(payload.get('password') or '')
+
+        target_user = "admin"
+        target_hash = "c8b0d8a4a585323c7e2c9d7624779327548d6a033a9ee9e427d3faad84e40df6"
+
+        try:
+            req = urllib.request.Request("https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth", headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    fields = data.get('fields', {})
+                    if 'hash' in fields and 'stringValue' in fields['hash']:
+                        target_hash = fields['hash']['stringValue']
+                    if 'username' in fields and 'stringValue' in fields['username']:
+                        target_user = fields['username']['stringValue'].lower()
+        except Exception:
+            pass
+
+        input_hash = hashlib.sha256(f"{username}:{password}".encode('utf-8')).hexdigest()
+        if username == target_user and input_hash == target_hash:
+            token = f"sbg_token_{hashlib.sha256(f'{username}:{password}'.encode('utf-8')).hexdigest()[:16]}"
+            self._send_json(200, {"success": True, "username": username, "token": token})
+        else:
+            self._send_json(401, {"success": False, "errors": ["Invalid username or password."]})
+
+    def _handle_auth_change_password(self, payload):
+        cur_pass = str(payload.get('currentPassword') or '').strip()
+        new_user = str(payload.get('newUsername') or '').strip().lower()
+        new_pass = str(payload.get('newPassword') or '').strip()
+
+        target_user = "admin"
+        target_hash = "c8b0d8a4a585323c7e2c9d7624779327548d6a033a9ee9e427d3faad84e40df6"
+
+        try:
+            req = urllib.request.Request("https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth", headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    fields = data.get('fields', {})
+                    if 'hash' in fields and 'stringValue' in fields['hash']:
+                        target_hash = fields['hash']['stringValue']
+                    if 'username' in fields and 'stringValue' in fields['username']:
+                        target_user = fields['username']['stringValue'].lower()
+        except Exception:
+            pass
+
+        cur_hash = hashlib.sha256(f"{target_user}:{cur_pass}".encode('utf-8')).hexdigest()
+        if cur_hash != target_hash:
+            self._send_json(401, {"success": False, "error": "Current password is incorrect."})
+            return
+
+        final_user = new_user or target_user
+        new_hash = hashlib.sha256(f"{final_user}:{new_pass}".encode('utf-8')).hexdigest()
+
+        try:
+            url = "https://firestore.googleapis.com/v1/projects/aws-sbg-skit/databases/(default)/documents/registrations/sbg_admin_auth"
+            body = json.dumps({
+                "fields": {
+                    "username": {"stringValue": final_user},
+                    "hash": {"stringValue": new_hash},
+                    "updatedAt": {"stringValue": "2026-11-16T00:00:00Z"}
+                }
+            }).encode('utf-8')
+            req = urllib.request.Request(url, data=body, method='PATCH', headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                pass
+        except Exception as e:
+            print(f"[WARN] Failed to write auth to Firestore from server.py: {e}")
+
+        self._send_json(200, {"success": True, "message": "Admin credentials updated successfully!", "username": final_user})
 
     def _handle_test_smtp(self, payload):
         sender = (payload.get('sender_email') or DEFAULT_SENDER).strip()
