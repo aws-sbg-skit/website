@@ -1052,6 +1052,25 @@
     return 'https://aws-sbg-skit.vercel.app';
   }
 
+  function getApiEndpoint(endpointPath) {
+    if (typeof window !== 'undefined' && window.location) {
+      const host = window.location.hostname;
+      // If deployed live on a public domain, use relative path (/api/...)
+      if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.startsWith('192.168.') && !host.startsWith('10.') && !host.endsWith('.local')) {
+        return endpointPath;
+      }
+      // If running on local server port 8080, relative path works directly
+      if (window.location.port === '8080') {
+        return endpointPath;
+      }
+      // If accessed via file:// or another local dev server port (e.g. 5500), use localhost:8080
+      if (host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:') {
+        return `http://localhost:8080${endpointPath}`;
+      }
+    }
+    return endpointPath;
+  }
+
   async function loadCertificates() {
     try {
       if (service && service.getCertificates) {
@@ -1481,20 +1500,44 @@
         `You can also add this verified credential to your LinkedIn profile with 1 click.\n\n` +
         `Keep Building!\nAWS Student Builder Group, SKIT Jaipur\nhttps://builder.aws.com`;
 
-      const resp = await fetch('/api/send-certificate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender_email: 'aws.sbg.skit@gmail.com',
-          app_password: savedPw,
-          recipient_email: reg.email,
-          recipient_name: attendeeName,
-          subject: subject,
-          body: body,
-          attachment_base64: attachmentBase64,
-          attachment_filename: attachmentFilename
-        })
-      });
+      let endpoint = getApiEndpoint('/api/send-certificate');
+      let resp;
+      try {
+        resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender_email: 'aws.sbg.skit@gmail.com',
+            app_password: savedPw,
+            recipient_email: reg.email,
+            recipient_name: attendeeName,
+            subject: subject,
+            body: body,
+            attachment_base64: attachmentBase64,
+            attachment_filename: attachmentFilename
+          })
+        });
+      } catch (netErr) {
+        if (!endpoint.includes('8080')) {
+          endpoint = 'http://localhost:8080/api/send-certificate';
+          resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sender_email: 'aws.sbg.skit@gmail.com',
+              app_password: savedPw,
+              recipient_email: reg.email,
+              recipient_name: attendeeName,
+              subject: subject,
+              body: body,
+              attachment_base64: attachmentBase64,
+              attachment_filename: attachmentFilename
+            })
+          });
+        } else {
+          throw netErr;
+        }
+      }
 
       const res = await resp.json();
       if (res.success) {
@@ -1830,16 +1873,40 @@
     }
 
     try {
-      const resp = await fetch('/api/test-smtp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender_email: 'aws.sbg.skit@gmail.com',
-          app_password: pw
-        })
-      });
+      let endpoint = getApiEndpoint('/api/test-smtp');
+      let resp;
+      try {
+        resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender_email: 'aws.sbg.skit@gmail.com',
+            app_password: pw
+          })
+        });
+      } catch (netErr) {
+        if (!endpoint.includes('8080')) {
+          endpoint = 'http://localhost:8080/api/test-smtp';
+          resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sender_email: 'aws.sbg.skit@gmail.com',
+              app_password: pw
+            })
+          });
+        } else {
+          throw netErr;
+        }
+      }
 
-      const res = await resp.json();
+      let res;
+      try {
+        res = await resp.json();
+      } catch (jsonErr) {
+        throw new Error(`Server returned HTTP ${resp.status}`);
+      }
+
       if (res.success) {
         if (smtpConnectionBadge) {
           smtpConnectionBadge.textContent = '✓ Connected to Gmail';
@@ -1864,8 +1931,10 @@
       if (smtpConnectionBadge) {
         smtpConnectionBadge.textContent = '✕ Server Offline';
         smtpConnectionBadge.style.color = '#f59e0b';
+        smtpConnectionBadge.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        smtpConnectionBadge.style.background = 'rgba(245, 158, 11, 0.1)';
       }
-      showToast('Cannot reach local server dispatch API. Is server.py running on port 8080?', 'error');
+      showToast(`Cannot reach email dispatch API (${err.message}).`, 'error');
     } finally {
       if (btnTestSmtpConnection) {
         btnTestSmtpConnection.disabled = false;
@@ -2028,22 +2097,51 @@
           .replace(/{{date}}/g, cert.eventDate || ev.dateDisplay);
 
         // POST to backend SMTP API
-        const resp = await fetch('/api/send-certificate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sender_email: 'aws.sbg.skit@gmail.com',
-            app_password: appPassword,
-            recipient_email: reg.email,
-            recipient_name: attendeeName,
-            subject: personalizedSubject,
-            body: personalizedBody,
-            attachment_base64: attachmentBase64,
-            attachment_filename: attachmentFilename
-          })
-        });
+        let endpoint = getApiEndpoint('/api/send-certificate');
+        let resp;
+        try {
+          resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sender_email: 'aws.sbg.skit@gmail.com',
+              app_password: appPassword,
+              recipient_email: reg.email,
+              recipient_name: attendeeName,
+              subject: personalizedSubject,
+              body: personalizedBody,
+              attachment_base64: attachmentBase64,
+              attachment_filename: attachmentFilename
+            })
+          });
+        } catch (netErr) {
+          if (!endpoint.includes('8080')) {
+            endpoint = 'http://localhost:8080/api/send-certificate';
+            resp = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sender_email: 'aws.sbg.skit@gmail.com',
+                app_password: appPassword,
+                recipient_email: reg.email,
+                recipient_name: attendeeName,
+                subject: personalizedSubject,
+                body: personalizedBody,
+                attachment_base64: attachmentBase64,
+                attachment_filename: attachmentFilename
+              })
+            });
+          } else {
+            throw netErr;
+          }
+        }
 
-        const resData = await resp.json();
+        let resData;
+        try {
+          resData = await resp.json();
+        } catch (jsonErr) {
+          throw new Error(`Server returned HTTP ${resp.status}`);
+        }
 
         if (resData.success) {
           successCount++;
