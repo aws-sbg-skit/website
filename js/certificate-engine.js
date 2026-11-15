@@ -26,7 +26,7 @@
       accentColor: '#00e676',
       badgeBg: 'rgba(0, 230, 118, 0.1)',
       badgeBorder: 'rgba(0, 230, 118, 0.4)',
-      qrDark: '#00e676',
+      qrDark: '#ffffff',
       qrLight: '#161d26'
     },
     format2: {
@@ -294,7 +294,7 @@
           // Draw QR Modules
           for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
-              ctx.fillStyle = qr.isDark(row, col) ? (tpl.theme === 'dark' ? '#00e676' : '#111827') : tpl.bgColor;
+              ctx.fillStyle = qr.isDark(row, col) ? (tpl.qrDark || (tpl.theme === 'dark' ? '#ffffff' : '#111827')) : tpl.bgColor;
               ctx.fillRect(qrX + col * cellSize, qrY + row * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
             }
           }

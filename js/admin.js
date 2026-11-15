@@ -183,6 +183,7 @@
   let currentPreviewCanvas = null;
   let currentPreviewCertId = '';
   let activeCertFormat = 'format1';
+  let bulkEmailScopedRegs = null;
 
   // ===================================================
   // INITIALIZATION & AUTH STATE
@@ -240,6 +241,7 @@
   }
 
   function updateDbStatusBadge() {
+    if (!statDbStatus || !statDbSyncInfo) return;
     if (service.isFirebaseReady) {
       statDbStatus.textContent = 'Firebase Cloud';
       statDbStatus.style.color = '#10b981';
@@ -309,6 +311,8 @@
 
     const username = adminUsernameInput.value.trim();
     const password = adminPasswordInput.value;
+    const rememberMeCheckbox = document.getElementById('adminRememberMe');
+    const remember = !!(rememberMeCheckbox && rememberMeCheckbox.checked);
 
     // Client-side field validation
     let hasError = false;
@@ -336,7 +340,7 @@
     loginSubmitBtn.style.opacity = '0.7';
 
     try {
-      const res = await service.login(username, password);
+      const res = await service.login(username, password, remember);
       if (res.success) {
         failedLoginAttempts = 0;
         if (lockoutTimer) clearInterval(lockoutTimer);
@@ -459,14 +463,26 @@
       return;
     }
 
-    adminEventsGrid.innerHTML = filtered.map(ev => {
+    // Sort events by creation order: oldest first, then latest
+    const sortedFiltered = filtered.slice().sort((a, b) => {
+      const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (tA && tB && tA !== tB) return tA - tB;
+      const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 0;
+      const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 0;
+      return numA - numB;
+    });
+
+    adminEventsGrid.innerHTML = sortedFiltered.map(ev => {
       const regsForEvent = cachedRegistrations.filter(r => r.eventId === ev.id);
       const regCount = regsForEvent.length;
       const capacity = ev.capacity || 100;
       const fillPercent = Math.min(100, Math.round((regCount / capacity) * 100));
 
-      const statusClass = ev.status === 'open' ? 'open' : (ev.status === 'upcoming' ? 'upcoming' : 'done');
-      const statusLabel = ev.status === 'open' ? '● Registrations Open' : (ev.status === 'upcoming' ? 'Upcoming' : 'Completed');
+      const isDone = ev.status === 'done';
+      const isRegOpen = ev.registrationOpen === true && !isDone;
+      const statusClass = isDone ? 'done' : (isRegOpen ? 'open' : 'upcoming');
+      const statusLabel = isDone ? 'Completed' : (isRegOpen ? '● Registrations Open' : 'Registrations Paused');
       const isExternal = ev.registrationType === 'external';
       const regTypeBadge = isExternal
         ? `<span class="event-reg-badge external" title="${escapeHTML(ev.externalRegistrationUrl || '')}">🔗 External Form</span>`
@@ -784,7 +800,11 @@
       category: formEventCategory.value,
       status: formEventStatus.value,
       dateDisplay: formEventDateDisplay.value.trim(),
-      dateISO: formEventDateISO.value || undefined,
+      dateISO: (formEventDateISO && formEventDateISO.value) ? formEventDateISO.value : (
+        !isNaN(Date.parse(formEventDateDisplay.value.trim()))
+          ? new Date(formEventDateDisplay.value.trim()).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0]
+      ),
       venue: formEventVenue.value.trim(),
       capacity: parseInt(formEventCapacity.value, 10) || 120,
       goodies: formEventGoodies.value.trim(),
@@ -1018,7 +1038,7 @@
   // ===================================================
   function updateStats() {
     const totalEvents = cachedEvents.length;
-    const openEvents = cachedEvents.filter(e => e.status === 'open').length;
+    const openEvents = cachedEvents.filter(e => e.registrationOpen === true && e.status !== 'done').length;
     const totalRegs = cachedRegistrations.length;
     const totalChamps = cachedChampions.length;
 
@@ -1170,6 +1190,18 @@
     const selectedEventId = certEventFilter ? certEventFilter.value : '';
     if (!selectedEventId) return [];
     return cachedRegistrations.filter(r => r.eventId === selectedEventId);
+  }
+
+  function getSelectedEventRegistrationsForCert() {
+    const selectedEventId = certEventFilter ? certEventFilter.value : '';
+    if (!selectedEventId) return [];
+    const allForEvent = cachedRegistrations.filter(r => r.eventId === selectedEventId);
+    const checkedBoxes = document.querySelectorAll('#certificatesTableBody .cert-row-checkbox:checked');
+    if (checkedBoxes.length > 0) {
+      const checkedIds = new Set(Array.from(checkedBoxes).map(cb => cb.dataset.regId));
+      return allForEvent.filter(r => checkedIds.has(r.id));
+    }
+    return allForEvent;
   }
 
   function renderCertificatesTable() {
@@ -1465,7 +1497,7 @@
 
     const savedPw = localStorage.getItem('aws_sbg_gmail_app_pw');
     if (!savedPw) {
-      openBulkEmailModal();
+      openBulkEmailModal(regId);
       showToast('Please enter your Gmail App Password to send emails from aws.sbg.skit@gmail.com', 'info');
       return;
     }
@@ -1492,13 +1524,31 @@
       const attachmentBase64 = result.dataUrl.split(',')[1];
       const attachmentFilename = `${safeName}_${cert.id}.png`;
 
-      const subject = `Your Certificate: ${ev ? ev.title : 'AWS Event'} — AWS SBG SKIT`;
-      const body = `Dear ${attendeeName},\n\n` +
-        `Congratulations on participating in "${ev ? ev.title : 'AWS Event'}" with the AWS Student Builder Group at SKIT, Jaipur!\n\n` +
-        `Your official verified certificate is attached to this email. You can also view and verify your credential online anytime at:\n${verifyUrl}\n\n` +
-        `Certificate ID: ${cert.id}\nDate of Issue: ${cert.eventDate}\n\n` +
-        `You can also add this verified credential to your LinkedIn profile with 1 click.\n\n` +
-        `Keep Building!\nAWS Student Builder Group, SKIT Jaipur\nhttps://builder.aws.com`;
+      const rawSubject = certEmailSubject && certEmailSubject.value ? certEmailSubject.value : `Your Certificate: ${ev ? ev.title : 'AWS Event'} — AWS SBG SKIT`;
+      const subject = rawSubject
+        .replace(/{{name}}/g, attendeeName)
+        .replace(/{{event}}/g, ev ? ev.title : 'AWS Event')
+        .replace(/{{role}}/g, cert.role || 'Participant')
+        .replace(/{{cert_id}}/g, cert.id);
+
+      let body = '';
+      if (certEmailBodyTemplate && certEmailBodyTemplate.value.trim()) {
+        body = certEmailBodyTemplate.value
+          .replace(/{{name}}/g, attendeeName)
+          .replace(/{{event}}/g, ev ? ev.title : 'AWS Event')
+          .replace(/{{role}}/g, cert.role || 'Participant')
+          .replace(/{{cert_id}}/g, cert.id)
+          .replace(/{{verify_url}}/g, verifyUrl)
+          .replace(/{{date}}/g, cert.eventDate || (ev ? ev.dateDisplay : ''));
+      } else {
+        body = `Dear ${attendeeName},\n\n` +
+          `Congratulations on participating in "${ev ? ev.title : 'AWS Event'}" with the AWS Student Builder Group at SKIT!\n\n` +
+          `Your official verified certificate is attached to this email. You can also view and verify your credential online anytime at:\n${verifyUrl}\n\n` +
+          `Certificate ID: ${cert.id}\nDate of Issue: ${cert.eventDate}\n\n` +
+          `You can also add this verified credential to your LinkedIn profile with 1 click.\n\n` +
+          `Keep Building!\nAWS Student Builder Group, SKIT`;
+      }
+      body = body.replace(/https:\/\/builder\.aws\.com\S*/gi, '').trim();
 
       let endpoint = getApiEndpoint('/api/send-certificate');
       let resp;
@@ -1803,7 +1853,10 @@
   }
 
   // Bulk Email Modal & SMTP Handlers
-  function openBulkEmailModal() {
+  function openBulkEmailModal(targetRegId = null) {
+    if (typeof targetRegId !== 'string') {
+      targetRegId = null;
+    }
     const selectedEventId = certEventFilter ? certEventFilter.value : '';
     const ev = cachedEvents.find(e => e.id === selectedEventId);
     if (!ev) {
@@ -1811,14 +1864,47 @@
       return;
     }
 
-    const eventRegs = getEventRegistrationsForCert();
-    if (eventRegs.length === 0) {
-      showToast('No registered participants found for this event.', 'error');
+    if (targetRegId) {
+      const reg = cachedRegistrations.find(r => r.id === targetRegId);
+      bulkEmailScopedRegs = reg ? [reg] : [];
+    } else {
+      bulkEmailScopedRegs = getSelectedEventRegistrationsForCert();
+    }
+
+    const eventRegs = bulkEmailScopedRegs;
+    if (!eventRegs || eventRegs.length === 0) {
+      showToast('No registered participants selected or found for this event.', 'error');
       return;
     }
 
+    const allForEvent = getEventRegistrationsForCert();
+
     if (certEmailEventName) certEmailEventName.textContent = ev.title;
-    if (certEmailRecipientSummary) certEmailRecipientSummary.textContent = `${eventRegs.length} verified participant emails queued`;
+    if (certEmailRecipientSummary) {
+      if (eventRegs.length === 1) {
+        const pName = (eventRegs[0].fullName || eventRegs[0].name || eventRegs[0].email).trim();
+        certEmailRecipientSummary.textContent = `1 participant (${pName}) selected`;
+      } else if (eventRegs.length < allForEvent.length) {
+        certEmailRecipientSummary.textContent = `${eventRegs.length} participants queued (Selected rows only)`;
+      } else {
+        certEmailRecipientSummary.textContent = `${eventRegs.length} verified participant emails queued`;
+      }
+    }
+
+    if (certEmailDispatchBtn) {
+      const btnSpan = certEmailDispatchBtn.querySelector('span');
+      if (btnSpan) {
+        if (eventRegs.length === 1) {
+          const pName = (eventRegs[0].fullName || eventRegs[0].name || 'Participant').trim();
+          btnSpan.textContent = `Send to ${pName}`;
+        } else if (eventRegs.length < allForEvent.length) {
+          btnSpan.textContent = `Send to ${eventRegs.length} Selected from aws.sbg.skit@gmail.com`;
+        } else {
+          btnSpan.textContent = 'Send All from aws.sbg.skit@gmail.com';
+        }
+      }
+    }
+
     if (certEmailFormatBadge) {
       const fmt = getSelectedCertFormat();
       certEmailFormatBadge.textContent = fmt === 'format1' ? 'Format 1: Dark Builder' : 'Format 2: Light Cloud';
@@ -1850,6 +1936,7 @@
   }
 
   function closeBulkEmailModal() {
+    bulkEmailScopedRegs = null;
     if (certEmailModalOverlay) {
       certEmailModalOverlay.style.display = 'none';
     }
@@ -1980,31 +2067,36 @@
   function handleBulkEmailMailto() {
     const selectedEventId = certEventFilter ? certEventFilter.value : '';
     const ev = cachedEvents.find(e => e.id === selectedEventId);
-    const eventRegs = getEventRegistrationsForCert();
+    const eventRegs = bulkEmailScopedRegs && bulkEmailScopedRegs.length > 0 ? bulkEmailScopedRegs : getSelectedEventRegistrationsForCert();
 
     if (!ev || eventRegs.length === 0) {
-      showToast('No participants available.', 'error');
+      showToast('No participants selected or available.', 'error');
       return;
     }
 
     const emails = eventRegs.map(r => r.email).filter(Boolean);
-    const subject = encodeURIComponent(certEmailSubject ? certEmailSubject.value : `Your Certificate — ${ev.title}`);
-    const body = encodeURIComponent(
-      `Hello Builders,\n\n` +
-      `Your certificates for "${ev.title}" are now live on the official credential registry!\n\n` +
-      `You can verify and download your certificate anytime at:\n${getLiveVerifyBaseUrl()}/verify.html\n\n` +
-      `Keep Building!\nAWS Student Builder Group, SKIT Jaipur`
-    );
+    const subject = (certEmailSubject && certEmailSubject.value) ? certEmailSubject.value : `Your Certificate — ${ev.title}`;
+    
+    let baseBody = certEmailBodyTemplate && certEmailBodyTemplate.value ? certEmailBodyTemplate.value : `Hello Builders,\n\nYour certificates for "${ev.title}" are now available.\n\nKeep Building!\nAWS Student Builder Group, SKIT`;
+    const cleanBody = baseBody.replace(/https:\/\/builder\.aws\.com\S*/gi, '').trim();
 
-    window.open(`mailto:?bcc=${encodeURIComponent(emails.join(','))}&subject=${subject}&body=${body}`, '_blank');
-    showToast(`Opened email draft with ${emails.length} recipients in BCC.`);
+    // Open via Gmail Web Compose (as requested)
+    let gmailUrl = '';
+    if (emails.length === 1) {
+      gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails[0])}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(cleanBody)}`;
+    } else {
+      gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(emails.join(','))}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(cleanBody)}`;
+    }
+
+    window.open(gmailUrl, '_blank');
+    showToast(`Opening Gmail web composer for ${emails.length} recipient(s)...`);
   }
 
   // Automated Bulk Email Dispatch with Certificate Attachment
   async function handleBulkEmailDispatch() {
     const selectedEventId = certEventFilter ? certEventFilter.value : '';
     const ev = cachedEvents.find(e => e.id === selectedEventId);
-    const eventRegs = getEventRegistrationsForCert();
+    const eventRegs = bulkEmailScopedRegs && bulkEmailScopedRegs.length > 0 ? bulkEmailScopedRegs : getSelectedEventRegistrationsForCert();
 
     if (!ev || eventRegs.length === 0) {
       showToast('No participants available to email.', 'error');
@@ -2089,12 +2181,14 @@
           .replace(/{{date}}/g, cert.eventDate || ev.dateDisplay);
 
         const personalizedBody = rawBody
+          .replace(/https:\/\/builder\.aws\.com\S*/gi, '')
           .replace(/{{name}}/g, attendeeName)
           .replace(/{{event}}/g, ev.title)
           .replace(/{{role}}/g, cert.role || 'participant')
           .replace(/{{cert_id}}/g, cert.id)
           .replace(/{{verify_url}}/g, verifyUrl)
-          .replace(/{{date}}/g, cert.eventDate || ev.dateDisplay);
+          .replace(/{{date}}/g, cert.eventDate || ev.dateDisplay)
+          .trim();
 
         // POST to backend SMTP API
         let endpoint = getApiEndpoint('/api/send-certificate');
@@ -2507,6 +2601,20 @@
     adminLoginForm.addEventListener('submit', handleLogin);
     logoutBtn.addEventListener('click', handleLogout);
 
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    if (togglePasswordBtn && adminPasswordInput) {
+      togglePasswordBtn.addEventListener('click', () => {
+        const isPassword = adminPasswordInput.type === 'password';
+        adminPasswordInput.type = isPassword ? 'text' : 'password';
+        const eyeIcon = togglePasswordBtn.querySelector('.icon-eye');
+        const eyeOffIcon = togglePasswordBtn.querySelector('.icon-eye-off');
+        if (eyeIcon) eyeIcon.style.display = isPassword ? 'none' : 'block';
+        if (eyeOffIcon) eyeOffIcon.style.display = isPassword ? 'block' : 'none';
+        togglePasswordBtn.title = isPassword ? 'Hide password' : 'Show password';
+        togglePasswordBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+      });
+    }
+
     if (resetDefaultCredsBtn) {
       resetDefaultCredsBtn.addEventListener('click', handleResetToDefault);
     }
@@ -2601,7 +2709,7 @@
     if (btnPreviewSelectedCert) btnPreviewSelectedCert.addEventListener('click', previewFirstAttendee);
     if (btnBulkGenerateCerts) btnBulkGenerateCerts.addEventListener('click', handleBulkGenerateCerts);
     if (btnBulkDownloadZip) btnBulkDownloadZip.addEventListener('click', handleBulkDownloadZip);
-    if (btnBulkEmailCerts) btnBulkEmailCerts.addEventListener('click', openBulkEmailModal);
+    if (btnBulkEmailCerts) btnBulkEmailCerts.addEventListener('click', () => openBulkEmailModal(null));
     if (certDescInput) certDescInput.addEventListener('input', updateCertDescCharCount);
     if (uploadExcelInput) uploadExcelInput.addEventListener('change', handleExcelUpload);
     if (btnTestSmtpConnection) btnTestSmtpConnection.addEventListener('click', handleTestSmtpConnection);

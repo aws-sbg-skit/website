@@ -140,7 +140,7 @@
       dateISO: '2026-07-22',
       venue: 'Civil Audio Visual Lab, SKIT',
       description: "Meet the core team, get the full rundown on what the community runs this year, and find your track — whether you're brand new to cloud or already shipping.",
-      badge: 'Done — 22nd July',
+      badge: 'Completed — 22nd July, 2026',
       goodies: '🎁 Goodies Included',
       tag: 'Orientation',
       capacity: 150,
@@ -159,7 +159,7 @@
       dateISO: '2026-09-16',
       venue: 'SKIT Campus',
       description: 'Join us at our meet & greet session to know more about the community, meet core team members, and get started on cloud.',
-      badge: 'Done — 16th Sept',
+      badge: 'Completed — 16th Sept, 2026',
       goodies: '🎁 Goodies Included',
       tag: 'Meet & Greet',
       capacity: 120,
@@ -178,7 +178,7 @@
       dateISO: '2026-09-27',
       venue: 'Seminar Hall, SKIT',
       description: 'Foundational deep-dive into AWS Cloud architecture, core cloud concepts, preparation roadmap, and proven tips to ace the AWS Certified Cloud Practitioner certification.',
-      badge: 'Done — 27th Sept',
+      badge: 'Completed — 27th Sept, 2026',
       goodies: '🎁 Goodies Included',
       tag: 'Certification',
       capacity: 160,
@@ -197,7 +197,7 @@
       dateISO: '2026-10-13',
       venue: 'SKIT Labs & Online',
       description: 'Tired of boring slideshows and heavy documentation? Step into the arena and learn Cloud Computing by playing a real 3D role-playing game!',
-      badge: 'Done — 13th Oct',
+      badge: 'Completed — 13th Oct, 2026',
       goodies: '🎁 Goodies Included',
       tag: 'Cloud Quest',
       capacity: 100,
@@ -216,7 +216,7 @@
       dateISO: '2026-10-26',
       venue: 'Computer Lab 3, SKIT',
       description: 'Technical Hands-On Workshop — learn AWS fundamentals, cloud infrastructure, and core services through interactive hands-on labs.',
-      badge: 'Done — 26th Oct',
+      badge: 'Completed — 26th Oct, 2026',
       goodies: '🎁 Goodies Included',
       tag: 'Workshop',
       capacity: 110,
@@ -437,7 +437,7 @@
     // ==========================================
     // AUTHENTICATION
     // ==========================================
-    async login(username, password) {
+    async login(username, password, remember = false) {
       if (!username || !password) {
         return { success: false, message: 'Please enter both username and password.' };
       }
@@ -464,12 +464,19 @@
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.token) {
-              sessionStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify({
+              const sessionPayload = JSON.stringify({
                 token: data.token,
                 username: data.username,
                 loggedInAt: new Date().toISOString(),
-                serverVerified: true
-              }));
+                serverVerified: true,
+                remember: !!remember
+              });
+              sessionStorage.setItem(SESSION_AUTH_TOKEN, sessionPayload);
+              if (remember) {
+                localStorage.setItem(SESSION_AUTH_TOKEN, sessionPayload);
+              } else {
+                localStorage.removeItem(SESSION_AUTH_TOKEN);
+              }
               return { success: true, username: data.username };
             }
           } else if (response.status === 429) {
@@ -514,12 +521,19 @@
 
         if (cleanUser === validUser && inputHash === validHash) {
           const token = 'sbg_adm_' + Math.random().toString(36).substring(2) + Date.now();
-          sessionStorage.setItem(SESSION_AUTH_TOKEN, JSON.stringify({
+          const sessionPayload = JSON.stringify({
             token,
             username: cleanUser,
             loggedInAt: new Date().toISOString(),
-            serverVerified: false
-          }));
+            serverVerified: false,
+            remember: !!remember
+          });
+          sessionStorage.setItem(SESSION_AUTH_TOKEN, sessionPayload);
+          if (remember) {
+            localStorage.setItem(SESSION_AUTH_TOKEN, sessionPayload);
+          } else {
+            localStorage.removeItem(SESSION_AUTH_TOKEN);
+          }
           return { success: true, username: cleanUser };
         } else {
           return { success: false, message: 'Invalid username or password.' };
@@ -531,7 +545,7 @@
 
     isAuthenticated() {
       try {
-        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN);
+        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN) || localStorage.getItem(SESSION_AUTH_TOKEN);
         if (!session) return false;
         const parsed = JSON.parse(session);
         return !!parsed.token;
@@ -542,7 +556,7 @@
 
     getCurrentUser() {
       try {
-        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN);
+        const session = sessionStorage.getItem(SESSION_AUTH_TOKEN) || localStorage.getItem(SESSION_AUTH_TOKEN);
         return session ? JSON.parse(session).username : null;
       } catch (e) {
         return null;
@@ -552,6 +566,7 @@
     logout() {
       try {
         sessionStorage.removeItem(SESSION_AUTH_TOKEN);
+        localStorage.removeItem(SESSION_AUTH_TOKEN);
       } catch (e) {}
     }
 
@@ -645,6 +660,41 @@
     // EVENTS CRUD
     // ==========================================
     async getEvents() {
+      const getEventTimestamp = (ev) => {
+        if (!ev) return 0;
+        if (ev.dateISO) {
+          const t = new Date(ev.dateISO).getTime();
+          if (!isNaN(t) && t > 0) return t;
+        }
+        if (ev.dateDisplay) {
+          const clean = ev.dateDisplay.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
+          const t = new Date(clean).getTime();
+          if (!isNaN(t) && t > 0) return t;
+          const m = ev.dateDisplay.match(/spring\s*(\d{4})/i);
+          if (m) return new Date(`${m[1]}-03-20`).getTime();
+        }
+        if (ev.createdAt) {
+          const t = new Date(ev.createdAt).getTime();
+          if (!isNaN(t) && t > 0) return t;
+        }
+        return parseInt((ev.id || '').replace(/\D/g, ''), 10) || 0;
+      };
+
+      const sortTimelineEvents = (arr) => {
+        return (arr || []).slice().sort((a, b) => {
+          const isDoneA = a.status === 'done';
+          const isDoneB = b.status === 'done';
+          // Past / Completed events come first, then active/upcoming events
+          if (isDoneA !== isDoneB) return isDoneA ? -1 : 1;
+          const tA = getEventTimestamp(a);
+          const tB = getEventTimestamp(b);
+          if (tA && tB && tA !== tB) return tA - tB;
+          const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 0;
+          const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 0;
+          return numA - numB;
+        });
+      };
+
       // If Firebase Firestore is active, fetch from it
       if (this.isFirebaseReady && this.firestore) {
         try {
@@ -654,9 +704,10 @@
             snapshot.forEach(doc => {
               list.push({ id: doc.id, ...doc.data() });
             });
+            const sortedList = sortTimelineEvents(list);
             // Update local cache
-            localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(list));
-            return list;
+            localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(sortedList));
+            return sortedList;
           } else {
             // First time sync: seed initial roadmap events into Firestore collection
             console.log('Seeding initial community events into Firestore...');
@@ -664,8 +715,9 @@
               this.firestore.collection('events').doc(ev.id).set(ev)
             );
             await Promise.all(seedPromises);
-            localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(DEFAULT_EVENTS));
-            return DEFAULT_EVENTS;
+            const sortedDefaults = sortTimelineEvents(DEFAULT_EVENTS);
+            localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(sortedDefaults));
+            return sortedDefaults;
           }
         } catch (err) {
           console.warn('Failed to fetch events from Firestore, falling back to local store:', err);
@@ -675,9 +727,10 @@
       // Local storage fallback
       try {
         const data = localStorage.getItem(STORAGE_KEY_EVENTS);
-        return data ? JSON.parse(data) : DEFAULT_EVENTS;
+        const list = data ? JSON.parse(data) : DEFAULT_EVENTS;
+        return sortTimelineEvents(list);
       } catch (e) {
-        return DEFAULT_EVENTS;
+        return sortTimelineEvents(DEFAULT_EVENTS);
       }
     }
 
@@ -704,7 +757,7 @@
         dateISO: eventData.dateISO || now.split('T')[0],
         venue: eventData.venue ? eventData.venue.trim() : 'SKIT Campus, Jaipur',
         description: eventData.description ? eventData.description.trim() : '',
-        badge: eventData.badge || (eventData.status === 'done' ? 'Completed' : (eventData.status === 'open' ? 'Registrations Open' : 'Upcoming')),
+        badge: eventData.badge || (eventData.status === 'done' ? (eventData.dateDisplay ? `Completed — ${eventData.dateDisplay.trim()}` : 'Completed') : (eventData.status === 'open' ? 'Registrations Open' : 'Upcoming')),
         goodies: eventData.goodies || '🎁 Goodies Included',
         tag: eventData.tag || eventData.category || 'Event',
         capacity: eventData.capacity ? parseInt(eventData.capacity, 10) : 100,
@@ -910,15 +963,33 @@
         throw new Error(`This event has reached its maximum seat limit of ${event.capacity} participants.`);
       }
 
-      // Duplicate check (by email or roll number)
-      const isDuplicate = currentRegistrations.some(r => {
-        const sameEmail = r.email.toLowerCase() === cleanEmail;
-        const sameRoll = cleanRoll && r.rollNumber && r.rollNumber.toUpperCase() === cleanRoll;
-        return sameEmail || sameRoll;
-      });
+      // Duplicate check (Device, Email & Roll Number)
+      // 1. Device check: Only 1 registration per device per event
+      try {
+        const deviceRegsStr = localStorage.getItem('sbg_registered_events');
+        if (deviceRegsStr) {
+          const deviceRegs = JSON.parse(deviceRegsStr);
+          if (deviceRegs && deviceRegs[eventId]) {
+            throw new Error('Already registered: A registration for this event has already been completed from this device.');
+          }
+        }
+      } catch (devErr) {
+        if (devErr.message && devErr.message.startsWith('Already registered:')) {
+          throw devErr;
+        }
+      }
 
-      if (isDuplicate) {
-        throw new Error('You have already registered for this event with this email or roll number.');
+      // 2. Email duplicate check: Only 1 registration per email per event
+      const isEmailDuplicate = currentRegistrations.some(r => r.email && r.email.toLowerCase() === cleanEmail);
+      if (isEmailDuplicate) {
+        throw new Error('Already registered: You have already registered for this event with this email address.');
+      }
+
+      if (cleanRoll) {
+        const isRollDuplicate = currentRegistrations.some(r => r.rollNumber && r.rollNumber.toUpperCase() === cleanRoll);
+        if (isRollDuplicate) {
+          throw new Error('Already registered: You have already registered for this event with this roll number.');
+        }
       }
 
       // 2. Try Serverless API Submission first (Server-side validation & verification)
@@ -998,6 +1069,14 @@
           console.warn('Failed to save registration to Firestore:', err);
         }
       }
+
+      // Record device registration
+      try {
+        const deviceRegsStr = localStorage.getItem('sbg_registered_events');
+        const deviceRegs = deviceRegsStr ? JSON.parse(deviceRegsStr) : {};
+        deviceRegs[eventId] = { email: cleanEmail, registrationId: regId, registeredAt: new Date().toISOString() };
+        localStorage.setItem('sbg_registered_events', JSON.stringify(deviceRegs));
+      } catch (e) {}
 
       return {
         success: true,

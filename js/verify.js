@@ -103,12 +103,7 @@
 
           <div class="verify-meta-item">
             <span class="verify-meta-label">Issuing Organization</span>
-            <span class="verify-meta-value">AWS Student Builder Group &bull; SKIT Jaipur Chapter</span>
-          </div>
-
-          <div class="verify-meta-item">
-            <span class="verify-meta-label">Authorized Signatory</span>
-            <span class="verify-meta-value">Tracy Wang (Community Program Manager, AWS Student Builder Groups)</span>
+            <span class="verify-meta-value">AWS Student Builder Group &bull; SKIT</span>
           </div>
         </div>
 
@@ -239,8 +234,8 @@
             ${customMessage || 'We could not locate a credential with this ID in the AWS SBG SKIT registry. Please double-check for any typos, or contact the student builder community coordinators.'}
           </p>
           <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
-            <a href="mailto:aws.sbg.skit@gmail.com?subject=Certificate%20Verification%20Inquiry%20${encodeURIComponent(cleanId)}" class="btn-verify-action">
-              ✉️ Contact Community Support
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=aws.sbg.skit@gmail.com&su=Certificate%20Verification%20Inquiry%20${encodeURIComponent(cleanId)}" target="_blank" rel="noopener noreferrer" class="btn-verify-action">
+              ✉️ Contact Admin
             </a>
             <a href="index.html#events" class="btn-verify-action">
               Explore SKIT Events

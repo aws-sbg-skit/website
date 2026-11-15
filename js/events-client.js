@@ -31,8 +31,41 @@
       const events = await service.getEvents();
       if (!events || events.length === 0) return;
 
+      // Sort events: past/completed events first, then upcoming events, sorted chronologically by date
+      const getEventTimestamp = (ev) => {
+        if (!ev) return 0;
+        if (ev.dateISO) {
+          const t = new Date(ev.dateISO).getTime();
+          if (!isNaN(t) && t > 0) return t;
+        }
+        if (ev.dateDisplay) {
+          const clean = ev.dateDisplay.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
+          const t = new Date(clean).getTime();
+          if (!isNaN(t) && t > 0) return t;
+          const m = ev.dateDisplay.match(/spring\s*(\d{4})/i);
+          if (m) return new Date(`${m[1]}-03-20`).getTime();
+        }
+        if (ev.createdAt) {
+          const t = new Date(ev.createdAt).getTime();
+          if (!isNaN(t) && t > 0) return t;
+        }
+        return parseInt((ev.id || '').replace(/\D/g, ''), 10) || 0;
+      };
+
+      const sortedEvents = events.slice().sort((a, b) => {
+        const isDoneA = a.status === 'done';
+        const isDoneB = b.status === 'done';
+        if (isDoneA !== isDoneB) return isDoneA ? -1 : 1;
+        const tA = getEventTimestamp(a);
+        const tB = getEventTimestamp(b);
+        if (tA && tB && tA !== tB) return tA - tB;
+        const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 0;
+        return numA - numB;
+      });
+
       // Render timeline HTML
-      renderTimelineHTML(timelineContainer, events);
+      renderTimelineHTML(timelineContainer, sortedEvents);
     } catch (err) {
       console.warn('Could not load dynamic events, keeping default markup:', err);
       timelineContainer.querySelectorAll('.tl-item').forEach(el => el.classList.add('in'));
@@ -58,10 +91,12 @@
 
       // Badge
       let badgeHtml = '';
-      if (isFeatured) {
+      if (isDone) {
+        const dateStr = ev.dateDisplay || '';
+        const badgeLabel = dateStr ? `Completed — ${dateStr}` : (ev.badge || 'Completed');
+        badgeHtml = `<span class="badge done">${escapeHTML(badgeLabel)}</span>`;
+      } else if (isFeatured) {
         badgeHtml = '<span class="badge badge-featured">⭐ Featured Event</span>';
-      } else if (isDone) {
-        badgeHtml = `<span class="badge done">${escapeHTML(ev.badge || ('Done — ' + ev.dateDisplay))}</span>`;
       } else if (isOpen) {
         badgeHtml = `<span class="badge soon" style="color: #34d399; border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08);">● Open for Registration</span>`;
       } else {
@@ -219,10 +254,9 @@
           </div>
 
           <div class="reg-modal-body">
-            <!-- Seat Counter Indicator -->
+            <!-- Event Benefits Indicator -->
             <div class="reg-seat-counter" id="modalSeatCounter">
               <span>🎟️ Free Entry &bull; Exclusive Swag for Registered Attendees</span>
-              <span id="modalSeatsRemaining">Seats Available</span>
             </div>
 
             <!-- Error Box -->
@@ -451,7 +485,6 @@
     const titleEl = document.getElementById('modalEventTitle');
     const dateEl = document.getElementById('modalEventDate');
     const venueEl = document.getElementById('modalEventVenue');
-    const remainingEl = document.getElementById('modalSeatsRemaining');
     const form = document.getElementById('nativeRegistrationForm');
     const successCard = document.getElementById('regSuccessCard');
     const errorBox = document.getElementById('regErrorBox');
@@ -460,17 +493,23 @@
     dateEl.textContent = '📅 ' + event.dateDisplay;
     venueEl.textContent = '📍 ' + (event.venue || 'SKIT Campus');
 
-    // Seat count
-    const existingRegs = await service.getRegistrationsByEvent(event.id);
-    const capacity = event.capacity || 120;
-    const remaining = Math.max(0, capacity - existingRegs.length);
-    remainingEl.textContent = `${remaining} seats remaining (${existingRegs.length}/${capacity} filled)`;
-
     // Reset views
     errorBox.style.display = 'none';
     form.reset();
     form.style.display = 'block';
     successCard.style.display = 'none';
+
+    // Device check: check if already registered from this device
+    try {
+      const deviceRegsStr = localStorage.getItem('sbg_registered_events');
+      if (deviceRegsStr) {
+        const deviceRegs = JSON.parse(deviceRegsStr);
+        if (deviceRegs && deviceRegs[event.id]) {
+          errorBox.textContent = 'Already registered: You have already submitted a registration for this event from this device.';
+          errorBox.style.display = 'block';
+        }
+      }
+    } catch (e) {}
 
     // Configure dynamic fields for this event
     const fields = event.registrationFields || {
@@ -677,6 +716,30 @@
       return;
     }
 
+    // 1. Device check: 1 registration per device per event
+    try {
+      const deviceRegsStr = localStorage.getItem('sbg_registered_events');
+      if (deviceRegsStr) {
+        const deviceRegs = JSON.parse(deviceRegsStr);
+        if (deviceRegs && deviceRegs[activeEvent.id]) {
+          errorBox.textContent = 'Already registered: A registration for this event has already been submitted from this device.';
+          errorBox.style.display = 'block';
+          return;
+        }
+      }
+    } catch (e) {}
+
+    // 2. Email check: 1 registration per email per event
+    const cleanEmail = emailInput.value.trim().toLowerCase();
+    try {
+      const existingRegs = await service.getRegistrationsByEvent(activeEvent.id);
+      if (existingRegs && existingRegs.some(r => r.email && r.email.toLowerCase() === cleanEmail)) {
+        errorBox.textContent = 'Already registered: You have already registered for this event with this email ID.';
+        errorBox.style.display = 'block';
+        return;
+      }
+    } catch (e) {}
+
     errorBox.style.display = 'none';
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>Verifying &amp; Reserving Seat...</span>';
@@ -685,7 +748,7 @@
     const regData = {
       eventId: activeEvent.id,
       fullName: nameInput.value.trim(),
-      email: emailInput.value.trim(),
+      email: cleanEmail,
       phone: fieldsConfig.phone !== false ? phoneInput.value.trim() : '',
       branch: fieldsConfig.branch !== false ? document.getElementById('regBranch').value : 'CSE',
       year: fieldsConfig.year !== false ? document.getElementById('regYear').value : '1st Year',
@@ -698,6 +761,14 @@
 
     try {
       const result = await service.registerAttendee(regData);
+
+      // Record on device
+      try {
+        const deviceRegsStr = localStorage.getItem('sbg_registered_events');
+        const deviceRegs = deviceRegsStr ? JSON.parse(deviceRegsStr) : {};
+        deviceRegs[activeEvent.id] = { email: cleanEmail, registrationId: result.registrationId, date: new Date().toISOString() };
+        localStorage.setItem('sbg_registered_events', JSON.stringify(deviceRegs));
+      } catch (e) {}
 
       // On Success
       form.style.display = 'none';

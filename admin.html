@@ -25,9 +25,9 @@
   <main class="admin-login-wrapper" id="loginWrapper">
     <div class="login-card">
       <div class="login-header">
-        <div class="login-brand">
-          <img src="assets/aws-sbg-logo.jpg" alt="AWS SBG SKIT Logo">
-          <span>AWS SBG <b>SKIT</b></span>
+        <div class="logo login-site-logo" style="justify-content: center; margin-bottom: 12px;">
+          <img src="assets/aws-sbg-logo.jpg" alt="AWS SBG" class="logo-mark" width="36" height="36">
+          <span>AWS SBG<small>STUDENT BUILDER GROUP AT SKIT</small></span>
         </div>
         <div>
           <span class="login-badge">Restricted Access</span>
@@ -53,19 +53,36 @@
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            <input type="text" id="adminUsername" placeholder="e.g. admin" autocomplete="off" required autofocus>
+            <input type="text" id="adminUsername" placeholder="" autocomplete="username" required autofocus>
           </div>
         </div>
 
         <div class="form-group">
           <label for="adminPassword">Password</label>
-          <div class="input-with-icon">
+          <div class="input-with-icon password-input-wrap">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
-            <input type="password" id="adminPassword" placeholder="••••••••" autocomplete="new-password" value="" required>
+            <input type="password" id="adminPassword" placeholder="" autocomplete="current-password" value="" required>
+            <button type="button" class="btn-toggle-password" id="togglePasswordBtn" aria-label="Toggle password visibility" title="Show password">
+              <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
           </div>
+        </div>
+
+        <div class="login-options-row">
+          <label class="remember-me-checkbox" for="adminRememberMe">
+            <input type="checkbox" id="adminRememberMe">
+            <span>Remember me</span>
+          </label>
         </div>
 
         <button type="submit" class="btn-primary" id="loginSubmitBtn">
@@ -77,7 +94,7 @@
         </button>
 
         <p class="login-footer-hint">
-          AWS Student Builder Group &bull; SKIT Jaipur Chapter
+          AWS Student Builder Group &bull; SKIT
         </p>
       </form>
     </div>
@@ -90,23 +107,14 @@
     <!-- Top Navigation -->
     <header class="admin-navbar">
       <div class="nav-left">
-        <a href="index.html" class="nav-logo" title="Back to AWS SBG Website">
-          <img src="assets/aws-sbg-logo.jpg" alt="AWS SBG Logo">
-          <span>AWS SBG <b>SKIT</b></span>
+        <a href="index.html" class="logo" title="Back to AWS SBG Website">
+          <img src="assets/aws-sbg-logo.jpg" alt="AWS SBG" class="logo-mark" width="34" height="34">
+          <span>AWS SBG<small>STUDENT BUILDER GROUP AT SKIT</small></span>
         </a>
         <span class="role-tag">Admin Console</span>
       </div>
 
       <div class="nav-right">
-        <a href="index.html" target="_blank" rel="noopener" class="btn-secondary" title="Preview public website in new tab">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-          </svg>
-          <span>Live Site</span>
-        </a>
-
         <div class="user-badge">
           <div class="avatar-circle" id="navUserInitial">A</div>
           <span id="navUsername">admin</span>
@@ -233,21 +241,6 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="8" r="7"></circle>
               <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
-            </svg>
-          </div>
-        </div>
-
-        <div class="stat-card" style="--stat-color: #a855f7;">
-          <div class="stat-info">
-            <p>Database Status</p>
-            <h3 id="statDbStatus" style="font-size: 20px; margin-top: 6px;">Local Cache</h3>
-            <span id="statDbSyncInfo">Offline / Local storage</span>
-          </div>
-          <div class="stat-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
-              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
             </svg>
           </div>
         </div>
@@ -483,14 +476,6 @@
                 <input type="file" id="uploadExcelInput" accept=".xlsx, .xls, .csv" style="display: none;">
               </label>
 
-              <button type="button" class="btn-secondary" id="btnPreviewSelectedCert" style="padding: 8px 14px;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                <span>Live Preview</span>
-              </button>
-
               <button type="button" class="btn-primary" id="btnBulkGenerateCerts" style="width: auto; background: var(--orange); border-color: var(--orange); color: #000;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
@@ -660,9 +645,6 @@
                 <button type="submit" class="btn-primary" style="width: auto;">
                   Update Credentials
                 </button>
-                <button type="button" class="btn-secondary" id="resetDefaultCredsBtn" style="width: auto; color: var(--orange-light); border-color: rgba(255, 153, 0, 0.4);">
-                  Reset to Default (admin / password123)
-                </button>
               </div>
             </form>
           </div>
@@ -714,16 +696,10 @@
             </div>
           </div>
 
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="formEventDateDisplay">Display Date *</label>
-              <input type="text" id="formEventDateDisplay" class="form-control form-control-no-icon" placeholder="e.g. 18th Dec, 2026" required>
-            </div>
-
-            <div class="form-group">
-              <label for="formEventDateISO">Date (for sorting)</label>
-              <input type="date" id="formEventDateISO" class="form-control form-control-no-icon">
-            </div>
+          <div class="form-group">
+            <label for="formEventDateDisplay">Event Date *</label>
+            <input type="text" id="formEventDateDisplay" class="form-control form-control-no-icon" placeholder="e.g. 18th Dec, 2026" required>
+            <input type="hidden" id="formEventDateISO">
           </div>
 
           <div class="form-grid-2">
@@ -1117,15 +1093,7 @@ AWS Student Builder Group, SKIT Jaipur</textarea>
         </div>
       </div>
 
-      <div class="modal-footer" style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-        <button type="button" class="btn-secondary" id="certEmailCopyLinksBatchBtn">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          <span>Copy All Links (CSV)</span>
-        </button>
-
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px;">
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <button type="button" class="btn-secondary" id="certEmailMailtoBtn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
